@@ -29,17 +29,19 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      */
     public enum SortType {
         /** sort by query, list subjects within query */
-        QUERY(BlastHit.QUERY),
+        QUERY(BlastHit.QUERY, "queries"),
         /** sort by subject, list queries within subject */
-        SUBJECT(BlastHit.SUBJECT);
+        SUBJECT(BlastHit.SUBJECT, "subject sequences");
 
         // FIELDS
         private int sortIdx;
         private int otherIdx;
+        private String plural;
 
-        private SortType(int idx) {
+        private SortType(int idx, String plural) {
             this.sortIdx = idx;
             this.otherIdx = 1 - idx;
+            this.plural = plural;
         }
 
         /**
@@ -82,6 +84,13 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
          */
         public BlastHit.SeqData target(BlastHit hit) {
             return hit.getData(this.otherIdx);
+        }
+
+        /**
+         * @return the plural phrase for the things being sorted
+         */
+        public String getPlural() {
+            return this.plural;
         }
 
     }
@@ -196,6 +205,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
         this.sortType = sort;
         this.hitMap = new TreeMap<String, List<BlastHit>>(new NaturalSort());
         this.rejected = 0;
+
     }
 
     /**
@@ -310,6 +320,13 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      */
     protected SortType getSortType() {
         return sortType;
+    }
+
+    /**
+     * @return the number of sort sequences hit
+     */
+    protected int getSequencesHit() {
+        return this.hitMap.size();
     }
 
 

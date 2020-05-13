@@ -211,6 +211,8 @@ public class ProfileProcessor extends BaseProcessor {
                     + " run against " + this.subjectFile.getName(), blastInfo);
         } catch (Exception e) {
             e.printStackTrace(System.err);
+        } finally {
+            this.reporter.close();
         }
     }
 

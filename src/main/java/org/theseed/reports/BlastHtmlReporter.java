@@ -115,8 +115,10 @@ public class BlastHtmlReporter extends BlastReporter {
                 li(blastInfo.getParms()),
                 li(String.format("%d queries produced %d hits.", blastInfo.getQueriesIn(),
                         blastInfo.getHitCount())),
-                li(String.format("%d queries had no hits.", blastInfo.getMissCount())
-                        )).render());
+                li(String.format("%d queries had no hits.", blastInfo.getMissCount())),
+                li(String.format("%d %s had hits.", this.getSequencesHit(),
+                        this.getSortType().getPlural()))
+                ).render());
     }
 
     @Override
