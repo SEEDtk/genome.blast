@@ -194,7 +194,7 @@ public class ProfileProcessor extends BaseProcessor {
                     .minPercent(this.minPctIdentity);
             // Get the hits for all the profiles.
             Map<String, List<BlastHit>> profileHits = this.profiler.profile(subject, parms);
-            log.info("{} profiles found hits.", profileHits.size());
+            log.info("{} subject sequences found hits.", profileHits.size());
             int hitCount = 0;
             for (Map.Entry<String, List<BlastHit>> profileEntry : profileHits.entrySet()) {
                 List<BlastHit> list = profileEntry.getValue();
@@ -206,7 +206,7 @@ public class ProfileProcessor extends BaseProcessor {
             log.info("Writing report. {} total hits recorded.", hitCount);
             int seqCount = this.profiler.size();
             BlastReporter.Info blastInfo = new BlastReporter.Info(subject.getBlastParms(), seqCount,
-                    seqCount - profileHits.size(), hitCount);
+                    seqCount - this.profiler.getHitCount(), hitCount);
             this.reporter.writeReport(subject.getBlastType().toUpperCase()
                     + " run against " + this.subjectFile.getName(), blastInfo);
         } catch (Exception e) {
