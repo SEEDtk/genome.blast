@@ -11,6 +11,8 @@ import org.theseed.utils.ICommand;
  *
  * match		match RNA sequences to proteins in a genome
  * blast		BLAST a sequence source against a BLAST database
+ * profile		run profiles against a DNA BLAST database
+ * makepdb		build a profile directory from the raw profiles
  */
 public class App
 {
@@ -27,6 +29,12 @@ public class App
             break;
         case "blast" :
             processor = new BlastProcessor();
+            break;
+        case "profile" :
+            processor = new ProfileProcessor();
+            break;
+        case "makepdb" :
+            processor = new ProfileMakeProcessor();
             break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);
