@@ -37,6 +37,7 @@ import org.theseed.utils.BaseProcessor;
  * contigs		genome GTO file, use the DNA contigs
  * pegs			genome GTO file, use the protein translations of protein-encoding features
  * features		genome GTO file, use the DNA sequences of the features
+ * pegs_dna		genome GTO file, use the DNA sequence of the protein-encoding features
  *
  * The following command-line options are supported
  *
@@ -44,7 +45,6 @@ import org.theseed.utils.BaseProcessor;
  * -v		show more detailed progress messages
  * -d		working directory for storing created files; the default is the current directory
  * -t		number of threads to use; the default is 1
- * -b		number of sequences to submit per batch; the default is 20;
  *
  * --gc			genetic code for type "dna" sequence files; the default is 11
  * --maxE		maximum permissible e-value; the default is 1e-10
@@ -54,6 +54,8 @@ import org.theseed.utils.BaseProcessor;
  * --keep		if specified, the BLAST database will be kept (ignored if database type is "db")
  * --color		color computation scheme for HTML reports; the default is "sim"
  * --minIdent	minimum percent identity for hits; the default is 0
+ * --minQIdent	minimum query identity fraction for hits; the default is 0.75
+ * --minQbsc	minimum query-scaled bit score for hits; the default is 0.35
  *
  * @author Bruce Parrello
  *
@@ -71,6 +73,7 @@ public class ProfileProcessor extends BaseProcessor {
     private BlastReporter reporter;
 
     // COMMAND-LINE OPTIONS
+
     /** working directory for created files */
     @Option(name = "-d", aliases = { "--dir", "--workDir" }, metaVar = "DB", usage = "working directory for created files")
     private File workDir;
@@ -120,6 +123,14 @@ public class ProfileProcessor extends BaseProcessor {
     @Option(name = "--color", usage = "color computation scheme for hits")
     private BlastHtmlReporter.ColorType colorType;
 
+    /** minimum query-scaled bit score */
+    @Option(name = "--minQbsc", metaVar = "1.2", usage = "minimum acceptable query-scaled bit score")
+    private double minQbsc;
+
+    /** minimum query identity fraction */
+    @Option(name = "--minQIdent", metaVar = "0.5", usage = "minimum acceptable query identity fraction")
+    private double minQIdent;
+
     /** profile direcory */
     @Argument(index = 0, usage = "protein profile directory", required = true)
     private File protFile;
@@ -143,6 +154,8 @@ public class ProfileProcessor extends BaseProcessor {
         this.maxPerQuery = 100;
         this.minPctSubject = 0.0;
         this.minPctIdentity = 0.0;
+        this.minQbsc = 0.0;
+        this.minQIdent = 0.0;
         this.numThreads = 1;
         this.sortType = BlastReporter.SortType.SUBJECT;
         this.colorType = BlastHtmlReporter.ColorType.ident;
@@ -167,6 +180,10 @@ public class ProfileProcessor extends BaseProcessor {
             throw new IllegalArgumentException("Minimum subject coverage must be between 0 and 100.");
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
             throw new IllegalArgumentException("Minimum percent identity must be between 0 and 100.");
+        if (this.minQbsc < 0.0 || this.minQbsc > 10.0)
+            throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
+        if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
+            throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
         this.profiler = new ProteinProfiles(this.protFile);
@@ -191,7 +208,8 @@ public class ProfileProcessor extends BaseProcessor {
             // Create the BLAST parameters.
             BlastParms parms = new BlastParms().maxE(this.eValue).num_threads(this.numThreads)
                     .maxPerQuery(this.maxPerQuery).pctLenOfSubject(this.minPctSubject)
-                    .minPercent(this.minPctIdentity);
+                    .minPercent(this.minPctIdentity).minQueryBitScore(this.minQbsc)
+                    .minQueryIdentity(this.minQIdent);
             // Get the hits for all the profiles.
             Map<String, List<BlastHit>> profileHits = this.profiler.profile(subject, parms);
             log.info("{} subject sequences found hits.", profileHits.size());

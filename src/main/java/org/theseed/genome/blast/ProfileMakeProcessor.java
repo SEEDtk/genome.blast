@@ -5,16 +5,14 @@ package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -22,8 +20,11 @@ import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.genome.Feature;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.utils.BaseProcessor;
@@ -41,6 +42,8 @@ import org.theseed.utils.BaseProcessor;
  *
  * -h	display usage
  * -v	display more detailed progress messages
+ * -m	minimum plurality count for an acceptable role (the default is 10)
+ * -p	minimum percentage of the total count for an acceptable role's plurality count (the default is 90)
  *
  * @author Bruce Parrello
  *
@@ -48,20 +51,28 @@ import org.theseed.utils.BaseProcessor;
 public class ProfileMakeProcessor extends BaseProcessor {
 
     // FIELDS
+    /** suffix for assigned-count files */
+    private static final String ASSIGN_SUFFIX = ".assign_cnt";
     /** logging facility */
     protected Logger log = LoggerFactory.getLogger(ProfileMakeProcessor.class);
     /** role map */
     private RoleMap roleMap;
     /** map file writer */
     private PrintWriter mapOutput;
-    /** pattern for finding local ID line */
-    private static final Pattern ID_LINE = Pattern.compile("\\s+local str \"([^\"]+)\"");
-    /** pattern for finding title line */
-    private static final Pattern TITLE_LINE = Pattern.compile("\\s+title \"\\S+ ([^\"]+)\"");
-    /** set of roles already processed */
-    private Set<String> processedRoles;
+    /** output role map */
+    private RoleMap rolesOut;
+    /** pattern for finding local ID from file */
+    private static final Pattern CLUSTER_ID = Pattern.compile(".+(nr\\d+([/\\\\])cl\\d+)\\" + ASSIGN_SUFFIX);
 
     // COMMAND-LINE OPTIONS
+
+    @Option(name = "-m", aliases = { "--minPlurality", "--minP" }, metaVar = "12",
+            usage = "minimum acceptable plurality count for a profile")
+    private int minPlurality;
+
+    @Option(name = "-p", aliases = { "--minPercent", "--minPct" }, metaVar = "95",
+            usage = "minimum acceptable percentage of plurality occurrences for a profile")
+    private double minPercent;
 
     /** role map input file */
     @Argument(index = 0, metaVar = "roleFile.tbl", usage = "role map input file", required = true)
@@ -77,6 +88,8 @@ public class ProfileMakeProcessor extends BaseProcessor {
 
     @Override
     protected void setDefaults() {
+        this.minPercent = 90.0;
+        this.minPlurality = 10;
     }
 
     @Override
@@ -100,8 +113,8 @@ public class ProfileMakeProcessor extends BaseProcessor {
         }
         // Create the map file.
         this.mapOutput = new PrintWriter(new File(this.outDir, "_map.tbl"));
-        // Create the process set.
-        this.processedRoles = new HashSet<String>(this.roleMap.size());
+        // Create the processed-roles set.
+        this.rolesOut = new RoleMap();
         return true;
     }
 
@@ -110,9 +123,11 @@ public class ProfileMakeProcessor extends BaseProcessor {
         try {
             // Create the map file and walk through all the smp files in the input.
             try (Stream<Path> paths = Files.walk(Paths.get(this.inDir.getPath()), 2)) {
-                paths.map(p -> p.toString()).filter(f -> f.endsWith(".smp")).forEach(f -> this.process(f));
+                paths.map(p -> p.toString()).filter(f -> f.endsWith(ASSIGN_SUFFIX)).forEach(f -> this.process(f));
                 this.mapOutput.flush();
             }
+            // Write out the role map.
+            this.rolesOut.save(new File(this.outDir, "_roles.tbl"));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         } finally {
@@ -121,76 +136,64 @@ public class ProfileMakeProcessor extends BaseProcessor {
     }
 
     /**
-     * Process a single profile file.  The file is a simple text file, and it contains among other things
-     * the description of the role.  This information is used to update the map file, find the role ID,
-     * and modify the file so that the role ID is returned as the sequence ID.
+     * Process a single profile.  The incoming file name is the assigned-count file. This is a 2-column
+     * headerless tab-delimited file.  Each line contains a count followed by a protein function.
+     * The first line is the primary function.  If the primary function's count is minPlurality or more, and if
+     * it is minPercent of the sum of all the counts, the profile is considered good.  The ".smp" file with the
+     * same name will be modified to contain the role ID and description and then copied to the
+     * compiled profile directory. If more than one profile specifies the same role, the one with
+     * the highest primary function count will be the winner.
      *
-     * @param profileFile	name of the profile file to read
-     *
-     * @throws IOException
+     * @param profileFile	name of the assigned-count file to read
      */
     private void process(String profileFile) {
-        try {
-            // Read all the lines from the file.
-            List<String> lines = Files.readAllLines(Paths.get(profileFile));
-            log.debug("Processing file {}.", profileFile);
-            // We need to search for the title and ID lines, and we need to memorize the local ID.
-            String description = null;
-            String localId = null;
-            int localIdLine = 0;
-            for (int i = 0; description == null; i++) {
-                if (i >= lines.size())
-                    throw new IndexOutOfBoundsException("Invalid profile:  local ID or title missing in " + profileFile + ".");
-                // Get the current line.
-                String line = lines.get(i);
-                if (localId == null) {
-                    // Here we have not yet found the local ID for this profile.
-                    Matcher lineMatcher = ID_LINE.matcher(line);
-                    if (lineMatcher.matches()) {
-                        localIdLine = i;
-                        localId = lineMatcher.group(1);
-                    }
-                } else {
-                    // Here we are looking for the title line.
-                    Matcher lineMatcher = TITLE_LINE.matcher(line);
-                    if (lineMatcher.matches()) {
-                        description = lineMatcher.group(1);
-                        // Use the description to find the role.
-                        Role role = roleMap.getByName(description);
-                        if (role != null && ! this.processedRoles.contains(role.getId())) {
-                            // Here the role is one we care about.  Replace the local ID with the role
-                            // ID in the file and write it to the output directory.
-                            this.fixLine(lines, localId, i, role);
-                            this.fixLine(lines, localId, localIdLine, role);
-                            File outFile = new File(this.outDir, role.getId() + ".smp");
-                            log.info("Creating {} from {} for: {}.", outFile, profileFile, description);
-                            try (FileWriter newProfileOut = new FileWriter(outFile)) {
-                                for (String oLine : lines)
-                                    newProfileOut.write(oLine);
-                            }
-                            // Store the mapping in the mapping file.
-                            this.mapOutput.format("%s\t%s%n", role.getId(), description);
-                            // Remember this role.
-                            this.processedRoles.add(role.getId());
+        // Get the cluster identifier for this profile.
+        Matcher m = CLUSTER_ID.matcher(profileFile);
+        if (! m.matches())
+            throw new RuntimeException("Invalid profile file name " + profileFile + ".");
+        else {
+            // To create the cluster ID, we take the full identifier and replace the path separator found
+            // with a period, a complicated operation.
+            String localId = StringUtils.replace(m.group(1), m.group(2), ".");
+            // Now read the assigned-count file to determine the quality of this profile.
+            try (TabbedLineReader countReader = new TabbedLineReader(new File(profileFile), 2)) {
+                log.debug("Processing profile {}.", localId);
+                Iterator<TabbedLineReader.Line> lineIter = countReader.iterator();
+                // Get the plurality line.
+                TabbedLineReader.Line line = lineIter.next();
+                if (line == null)
+                    log.warn("Assignment file for {} is empty.", localId);
+                else {
+                    String function = line.get(1);
+                    int plurality = line.getInt(0);
+                    int total = plurality;
+                    // Parse the function for a good role.
+                    List<Role> roles = Feature.usefulRoles(this.roleMap, function);
+                    if (roles.size() > 0 && plurality >= this.minPlurality) {
+                        // Here the plurality function contains useful roles.  Compute the total count.
+                        while (lineIter.hasNext())
+                            total += lineIter.next().getInt(0);
+                        log.debug("Plurality for {} is {} out of {}.", localId, plurality, total);
+                        if (plurality * 100.0 / total >= this.minPercent) {
+                            // We can output this profile. We give it a new file name based on the cluster ID, but
+                            // first we need its current name.
+                            String profileSmp = StringUtils.substringBeforeLast(profileFile, ASSIGN_SUFFIX) + ".smp";
+                            File oldProfile = new File(profileSmp);
+                            File newProfile = new File(this.outDir, localId + ".smp");
+                            log.info("Copying profile from {} to {}.", oldProfile, newProfile);
+                            FileUtils.copyFile(oldProfile, newProfile);
+                            // Update the maps.
+                            mapOutput.format("%s\t%s%n", localId, function);
+                            for (Role role : roles)
+                                if (! this.rolesOut.containsKey(role.getId()))
+                                    this.rolesOut.put(role);
                         }
                     }
                 }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
-    }
-
-    /**
-     * Replace the local ID with the role ID in the specified line.
-     *
-     * @param lines		line list
-     * @param localId	local ID to replace
-     * @param i			index of line to update
-     * @param role		role whose ID is to be replaced
-     */
-    private void fixLine(List<String> lines, String localId, int i, Role role) {
-        lines.set(i, StringUtils.replaceOnce(lines.get(i), localId, role.getId()));
     }
 
 }

@@ -33,6 +33,9 @@ public class App
         case "profile" :
             processor = new ProfileProcessor();
             break;
+        case "pverify" :
+            processor = new ProfileVerifyProcessor();
+            break;
         case "makepdb" :
             processor = new ProfileMakeProcessor();
             break;
