@@ -121,9 +121,9 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     }
 
     @Override
-    public void run() {
+    public void runCommand() throws Exception {
+        throw new RuntimeException("Testing");
         // TODO Auto-generated method stub
-
     }
 
 }

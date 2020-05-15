@@ -205,7 +205,7 @@ public class BlastProcessor extends BaseProcessor {
     }
 
     @Override
-    public void run() {
+    public void runCommand() throws Exception {
         try {
             // Create the BLAST parameters.
             BlastParms parms = new BlastParms().maxE(this.eValue).num_threads(this.numThreads)
@@ -244,8 +244,6 @@ public class BlastProcessor extends BaseProcessor {
             BlastReporter.Info blastInfo = new BlastReporter.Info(subject.getBlastParms(), seqCount, missCount, hitCount);
             this.reporter.writeReport(subject.getBlastType().toUpperCase()
                     + " run against " + this.subjectFile.getName(), blastInfo);
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
         } finally {
             this.query.close();
             this.reporter.close();

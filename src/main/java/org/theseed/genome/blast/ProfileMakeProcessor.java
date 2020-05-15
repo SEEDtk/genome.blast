@@ -119,7 +119,7 @@ public class ProfileMakeProcessor extends BaseProcessor {
     }
 
     @Override
-    public void run() {
+    public void runCommand() throws Exception {
         try {
             // Create the map file and walk through all the smp files in the input.
             try (Stream<Path> paths = Files.walk(Paths.get(this.inDir.getPath()), 2)) {
@@ -128,8 +128,6 @@ public class ProfileMakeProcessor extends BaseProcessor {
             }
             // Write out the role map.
             this.rolesOut.save(new File(this.outDir, "_roles.tbl"));
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
         } finally {
             this.mapOutput.close();
         }

@@ -182,7 +182,7 @@ public class MatchProcessor extends BaseProcessor {
     }
 
     @Override
-    public void run() {
+    public void runCommand() throws Exception {
         try {
             // Create the BLAST database.
             BlastDB blastDB = this.createBlastDb();
@@ -205,8 +205,6 @@ public class MatchProcessor extends BaseProcessor {
             // Finish the output report.
             reporter.finish();
             log.info("All done. {} sequences in {} batches processed.", seqCount, batchCount);
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
         } finally {
             this.inStream.close();
             if (this.reporter != null)
