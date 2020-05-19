@@ -48,14 +48,15 @@ import org.theseed.utils.BaseProcessor;
  *
  * --gc			genetic code for type "dna" sequence files; the default is 11
  * --maxE		maximum permissible e-value; the default is 1e-10
+ * --minQuery	minimum percent coverage for profiles; the default is 0
  * --minSubject	minimum percent coverage for subject sequences; the default is 0
  * --format		output format; the default is HTML
  * --sort		sort order of output (QUERY or SUBJECT); the default is QUERY
  * --keep		if specified, the BLAST database will be kept (ignored if database type is "db")
  * --color		color computation scheme for HTML reports; the default is "sim"
  * --minIdent	minimum percent identity for hits; the default is 0
- * --minQIdent	minimum query identity fraction for hits; the default is 0.75
- * --minQbsc	minimum query-scaled bit score for hits; the default is 0.35
+ * --minQIdent	minimum query identity fraction for hits; the default is 0
+ * --minQbsc	minimum query-scaled bit score for hits; the default is 1.1
  *
  * @author Bruce Parrello
  *
@@ -101,6 +102,11 @@ public class ProfileProcessor extends BaseProcessor {
     @Option(name = "--minIdent", aliases = { "--percIdentity", "--minI" }, metaVar = "75",
             usage = "minimum percent identity for a hit")
     private double minPctIdentity;
+
+    /** minimum percent query coverage for a legitimate hit */
+    @Option(name = "--minQuery", aliases = { "--minQ" }, metaVar = "75",
+            usage  = "minimum percent of query sequence that must be hit")
+    private double minPctQuery;
 
     /** maximum number of results to return per query */
     @Option(name = "--max", aliases = { "--maxHSP", "--maxPerQuery" }, metaVar = "10",
@@ -153,8 +159,9 @@ public class ProfileProcessor extends BaseProcessor {
         this.keepDB = false;
         this.maxPerQuery = 100;
         this.minPctSubject = 0.0;
+        this.minPctQuery = 0.0;
         this.minPctIdentity = 0.0;
-        this.minQbsc = 0.0;
+        this.minQbsc = 1.1;
         this.minQIdent = 0.0;
         this.numThreads = 1;
         this.sortType = BlastReporter.SortType.SUBJECT;

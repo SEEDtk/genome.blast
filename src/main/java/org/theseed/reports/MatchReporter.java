@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 import org.theseed.genome.Genome;
+import org.theseed.locations.Location;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.MatchProcessor;
 
@@ -21,7 +22,7 @@ import org.theseed.sequence.blast.MatchProcessor;
 public abstract class MatchReporter extends BaseReporter {
 
     public enum Type {
-        TRAINING, GTI;
+        GTI, VERIFY;
 
         /**
          * Construct an RNA Sequence Matching report of this type.
@@ -32,11 +33,11 @@ public abstract class MatchReporter extends BaseReporter {
         public MatchReporter create(OutputStream output, Genome genome) {
             MatchReporter retVal = null;
             switch (this) {
-            case TRAINING :
-                retVal = new MatchTrainingReporter(output, genome);
-                break;
             case GTI :
                 retVal = new MatchGtiReporter(output, genome);
+                break;
+            case VERIFY :
+                retVal = new MatchVerifyReporter(output, genome);
                 break;
             }
             return retVal;
@@ -70,13 +71,14 @@ public abstract class MatchReporter extends BaseReporter {
      * Process the output from a sequence.
      *
      * @param id		input sequence ID
-     * @param dna		RNA sequence nucleotides
+     * @param loc 		genome location
+     * @param dna		genome nucleotides
      * @param prots		list of the operon proteins in the RNA (must be nonempty)
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    public abstract void processSequence(String id, String dna, List<Sequence> prots) throws IOException, InterruptedException;
+    public abstract void processSequence(String id, Location loc, String dna, List<Sequence> prots) throws IOException, InterruptedException;
 
     /**
      * Finish the report.

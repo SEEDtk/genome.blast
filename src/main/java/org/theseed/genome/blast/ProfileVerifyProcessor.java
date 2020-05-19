@@ -47,8 +47,9 @@ import org.theseed.utils.BaseProcessor;
  * --gc			genetic code for type "dna" sequence files; the default is 11
  * --maxE		maximum permissible e-value; the default is 1e-10
  * --minIdent	minimum percent identity for hits; the default is 0
- * --minQIdent	minimum query identity fraction for hits; the default is 0.75
- * --minQbsc	minimum query-scaled bit score for hits; the default is 0.35
+ * --minQIdent	minimum query identity fraction for hits; the default is 0.0
+ * --minQbsc	minimum query-scaled bit score for hits; the default is 0.0
+ * --minQuery	minimum percent query match; the default is 0.0
  *
  * @author Bruce Parrello
  *
@@ -106,12 +107,17 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     private double minPctIdentity;
 
     /** minimum query-scaled bit score */
-    @Option(name = "--minQbsc", metaVar = "1.2", usage = "minimum acceptable query-scaled bit score")
+    @Option(name = "--minQbsc", metaVar = "1.1", usage = "minimum acceptable query-scaled bit score")
     private double minQbsc;
 
     /** minimum query identity fraction */
     @Option(name = "--minQIdent", metaVar = "0.5", usage = "minimum acceptable query identity fraction")
     private double minQIdent;
+
+    /** minimum percent query coverage for a legitimate hit */
+    @Option(name = "--minQuery", aliases = { "--minQ" }, metaVar = "75",
+            usage  = "minimum percent of query sequence that must be hit")
+    private double minPctQuery;
 
     /** profile direcory */
     @Argument(index = 0, metaVar = "profileDir", usage = "protein profile directory", required = true)
@@ -152,6 +158,8 @@ public class ProfileVerifyProcessor extends BaseProcessor {
             throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
         if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
             throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
+        if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
+            throw new IllegalArgumentException("Minimum query percentation must be between 0 and 100.");
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
         this.profiler = new ProteinProfiles(this.protFile);
@@ -166,7 +174,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         this.goodCount = 0;
         // Create the BLAST parameters.
         BlastParms parms = new BlastParms().maxE(this.eValue).num_threads(this.numThreads).minPercent(this.minPctIdentity)
-                .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent);
+                .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent).pctLenOfQuery(this.minPctQuery);
         // Loop through the genomes.
         for (File gFile : this.genomeFiles) {
             Genome genome = new Genome(gFile);
@@ -220,12 +228,12 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         log.info("{} total features missed out of {} possible. {} bad hits.", this.missCount,
                 this.goodCount, this.badHits.size());
         // Now we produce the report.
-        System.out.println("profile\tq_len\thit_loc\te_value\tp_ident\tbit_score\tq_bit_score\tq_ident");
+        System.out.println("profile\tq_len\thit_loc\te_value\tp_ident\tbit_score\tq_bit_score\tq_ident\tq_percent\tneighborhood");
         for (Miss miss : this.badHits) {
             BlastHit hit = miss.hit;
-            System.out.format("%s\t%d\t%s\t%4.2e\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%s%n", hit.getQueryId(), hit.getQueryLen(),
+            System.out.format("%s\t%d\t%s\t%4.2e\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%s%n", hit.getQueryId(), hit.getQueryLen(),
                     hit.getSubjectLoc(), hit.getEvalue(), hit.getPercentIdentity(), hit.getBitScore(),
-                    hit.getQueryBitScore(), hit.getQueryIdentity(), miss.neighborhood);
+                    hit.getQueryBitScore(), hit.getQueryIdentity(), hit.getQueryPercentMatch(), miss.neighborhood);
         }
     }
 

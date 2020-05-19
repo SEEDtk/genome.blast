@@ -6,8 +6,10 @@ package org.theseed.reports;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.theseed.genome.Genome;
+import org.theseed.locations.Location;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.MatchProcessor;
 
@@ -21,30 +23,27 @@ import org.theseed.sequence.blast.MatchProcessor;
 public class MatchGtiReporter extends MatchReporter {
 
     /**
-     * @param output
-     * @param genome
+     * Create a GTI report.
+     *
+     * @param output	output stream
+     * @param genome	controlling genome
      */
     public MatchGtiReporter(OutputStream output, Genome genome) {
         super(output, genome);
-        // TODO Auto-generated constructor stub
     }
 
     @Override
     public void initialize(MatchProcessor base) throws IOException, InterruptedException {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
-    public void processSequence(String id, String dna, List<Sequence> prots) throws IOException, InterruptedException {
-        // TODO Auto-generated method stub
-
+    public void processSequence(String id, Location loc, String dna, List<Sequence> prots) throws IOException, InterruptedException {
+        String proteinList = prots.stream().map(x -> x.getSequence()).collect(Collectors.joining("\t"));
+        this.print("%s\t%s\t%s\t%s", id, loc.toString(), dna, proteinList);
     }
 
     @Override
     public void finish() {
-        // TODO Auto-generated method stub
-
     }
 
 }
