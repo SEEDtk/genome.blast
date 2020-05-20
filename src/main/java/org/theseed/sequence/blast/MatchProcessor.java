@@ -24,7 +24,7 @@ import org.theseed.genome.Genome;
 import org.theseed.locations.BLocation;
 import org.theseed.locations.FLocation;
 import org.theseed.locations.Location;
-import org.theseed.proteins.DnaTranslator;
+import org.theseed.proteins.LocationFixer;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.DnaDataStream;
 import org.theseed.sequence.FastaInputStream;
@@ -61,6 +61,7 @@ import org.theseed.utils.BaseProcessor;
  * --minQbsc	minimum query-scaled bit score for profile hits; the default is 1.1
  * --minQuery	minimum percent query match for profile hits; the default is 65.0
  * --format		output format
+ * --starts		algorithm for finding starts; the default is LONGEST
  *
  * @author Bruce Parrello
  *
@@ -87,7 +88,7 @@ public class MatchProcessor extends BaseProcessor {
     /** map of sequence IDs to proteins for the current batch */
     private Map<String, List<Sequence>> protMap;
     /** DNA translator for the genome's genetic code */
-    private DnaTranslator xlator;
+    private LocationFixer xlator;
     /** number of batches processed */
     private int batchNum;
     /** current protein number */
@@ -160,6 +161,10 @@ public class MatchProcessor extends BaseProcessor {
             usage  = "minimum percent of query sequence that must match in a profile hit")
     private double minPctQuery;
 
+    /** algorithm for finding starts */
+    @Option(name = "--starts", usage = "algorithm for finding start codons from profile hits")
+    private LocationFixer.Type algorithm;
+
     /** RNA sequence input file */
     @Argument(index = 0, metaVar = "rna.fasta", usage = "RNA sequence input file", required = true)
     private File inFile;
@@ -188,6 +193,7 @@ public class MatchProcessor extends BaseProcessor {
         this.outFormat = MatchReporter.Type.GTI;
         this.reporter = null;
         this.protNum = 1;
+        this.algorithm = LocationFixer.Type.LONGEST;
     }
 
     @Override
@@ -196,7 +202,7 @@ public class MatchProcessor extends BaseProcessor {
         log.info("Loading genome from {}.", this.genomeFile);
         this.genome = new Genome(this.genomeFile);
         // Get the appropriate translator.
-        this.xlator = new DnaTranslator(this.genome.getGeneticCode());
+        this.xlator = this.algorithm.create(this.genome.getGeneticCode());
         // Connect to the RNA input stream.
         if (! this.inFile.canRead())
             throw new FileNotFoundException("RNA input file " + this.inFile + " not foudn or unreadable.");
@@ -310,7 +316,6 @@ public class MatchProcessor extends BaseProcessor {
      */
     private void processSequence(Sequence rnaSeq, List<BlastHit> hits) {
         String rnaSequence;
-        int gc = this.genome.getGeneticCode();
         // These variables are used to build protein IDs.  The first part is an RNA seq ID and the second part is
         // a counter value.
         String rnaLabel = rnaSeq.getLabel();
@@ -338,9 +343,9 @@ public class MatchProcessor extends BaseProcessor {
         // location matches another hit, we throw away the shorter one.
         List<ProteinHit> processed = new ArrayList<ProteinHit>(kept.size());
         for (ProteinHit protHit : kept) {
-            protHit.loc = protHit.loc.extend(rnaSequence, gc);
+            boolean ok = this.xlator.fix(protHit.loc, rnaSequence);
             // Only proceed if we successfully extended to a start and stop.
-            if (protHit.loc != null) {
+            if (ok) {
                 // Find out if there is already a location with the same stop.
                 final int stopLoc = protHit.loc.getRight();
                 Optional<ProteinHit> rival = processed.stream().filter(x -> x.loc.getRight() == stopLoc).findFirst();
