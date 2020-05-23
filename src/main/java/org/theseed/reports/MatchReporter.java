@@ -10,7 +10,7 @@ import java.util.List;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
 import org.theseed.sequence.Sequence;
-import org.theseed.sequence.blast.MatchProcessor;
+import org.theseed.sequence.blast.MatchBaseProcessor;
 
 /**
  * This is the base reporting class for MatchProcessor.  The main heading is an input sequence.  The
@@ -62,10 +62,9 @@ public abstract class MatchReporter extends BaseReporter {
     /**
      * Initialize the report.
      *
-     * @throws InterruptedException
      * @throws IOException
      */
-    public abstract void initialize(MatchProcessor base) throws IOException, InterruptedException;
+    public abstract void initialize(MatchBaseProcessor base) throws IOException;
 
     /**
      * Process the output from a sequence.

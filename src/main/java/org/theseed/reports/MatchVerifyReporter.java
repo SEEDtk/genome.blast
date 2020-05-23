@@ -20,7 +20,7 @@ import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
 import org.theseed.sequence.ProteinKmers;
 import org.theseed.sequence.Sequence;
-import org.theseed.sequence.blast.MatchProcessor;
+import org.theseed.sequence.blast.MatchBaseProcessor;
 
 /**
  * This report displays each protein sequence found and compares it to the closest known protein in the
@@ -54,7 +54,7 @@ public class MatchVerifyReporter extends MatchReporter {
     }
 
     @Override
-    public void initialize(MatchProcessor base) throws IOException, InterruptedException {
+    public void initialize(MatchBaseProcessor base) throws IOException {
         this.println("prot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes");
         this.counters.clear();
     }
