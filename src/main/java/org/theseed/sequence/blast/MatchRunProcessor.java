@@ -8,10 +8,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.FilenameFilter;
-
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
+import org.theseed.io.GtoFilter;
 
 /**
  * This method runs the MatchProcessor against all rna/genome pairs in a directory.  It has
@@ -62,19 +61,11 @@ public class MatchRunProcessor extends MatchBaseProcessor {
         return true;
     }
 
-    private static class GtoFilter implements FilenameFilter {
-
-        @Override
-        public boolean accept(File dir, String name) {
-            return (name.endsWith(".gto"));
-        }
-
-    }
     @Override
     protected void runCommand() throws Exception {
         int sampCount = 0;
         // Loop through the input directory.
-        File[] gtoFiles = this.inDir.listFiles(new GtoFilter());
+        File[] gtoFiles = GtoFilter.getAll(this.inDir);
         log.info("{} GTO files found in {}.", gtoFiles.length, this.inDir);
         for (File gtoFile : gtoFiles) {
             // Find the corresponding RNA file.

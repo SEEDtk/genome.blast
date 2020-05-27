@@ -45,6 +45,9 @@ public class App
         case "mrun" :
             processor = new MatchRunProcessor();
             break;
+        case "vanalyze" :
+            processor = new VerifyAnalyzeProcessor();
+            break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);
         }
