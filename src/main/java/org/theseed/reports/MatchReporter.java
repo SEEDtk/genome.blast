@@ -9,8 +9,6 @@ import java.util.List;
 
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
-import org.theseed.sequence.Sequence;
-import org.theseed.sequence.blast.MatchBaseProcessor;
 
 /**
  * This is the base reporting class for MatchProcessor.  The main heading is an input sequence.  The
@@ -28,16 +26,15 @@ public abstract class MatchReporter extends BaseReporter {
          * Construct an RNA Sequence Matching report of this type.
          *
          * @param output	output stream
-         * @param genome	input genome
          */
-        public MatchReporter create(OutputStream output, Genome genome) {
+        public MatchReporter create(OutputStream output) {
             MatchReporter retVal = null;
             switch (this) {
             case GTI :
-                retVal = new MatchGtiReporter(output, genome);
+                retVal = new MatchGtiReporter(output);
                 break;
             case VERIFY :
-                retVal = new MatchVerifyReporter(output, genome);
+                retVal = new MatchVerifyReporter(output);
                 break;
             }
             return retVal;
@@ -47,6 +44,8 @@ public abstract class MatchReporter extends BaseReporter {
     // FIELDS
     /** genome of interest */
     private Genome genome;
+    /** ID of current sample */
+    private String sampleId;
 
     /**
      * Construct an RNA Sequence Matching report.
@@ -54,9 +53,10 @@ public abstract class MatchReporter extends BaseReporter {
      * @param output	output stream
      * @param genome	input genome
      */
-    public MatchReporter(OutputStream output, Genome genome) {
+    public MatchReporter(OutputStream output) {
         super(output);
-        this.genome = genome;
+        this.genome = null;
+        this.sampleId = null;
     }
 
     /**
@@ -64,8 +64,18 @@ public abstract class MatchReporter extends BaseReporter {
      *
      * @throws IOException
      */
-    public abstract void initialize(MatchBaseProcessor base) throws IOException;
+    public abstract void initialize() throws IOException;
 
+    /**
+     * Start a section.
+     *
+     * @param genome	target genome
+     * @param sample	source sample ID
+     */
+    public void startSection(Genome genome, String sampleId) {
+        this.genome = genome;
+        this.sampleId = sampleId;
+    }
     /**
      * Process the output from a sequence.
      *
@@ -77,7 +87,7 @@ public abstract class MatchReporter extends BaseReporter {
      * @throws InterruptedException
      * @throws IOException
      */
-    public abstract void processSequence(String id, Location loc, String dna, List<Sequence> prots) throws IOException, InterruptedException;
+    public abstract void processSequence(String id, Location loc, String dna, List<String> prots) throws IOException, InterruptedException;
 
     /**
      * Finish the report.
@@ -89,6 +99,13 @@ public abstract class MatchReporter extends BaseReporter {
      */
     public Genome getGenome() {
         return genome;
+    }
+
+    /**
+     * @return the sample ID
+     */
+    public String getSampleId() {
+        return sampleId;
     }
 
 }

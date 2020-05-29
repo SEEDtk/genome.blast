@@ -5,6 +5,7 @@ package org.theseed.reports;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -16,11 +17,9 @@ import org.apache.commons.text.similarity.LevenshteinResults;
 import org.theseed.counters.EnumCounter;
 import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
-import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
+import org.theseed.sequence.MD5Hex;
 import org.theseed.sequence.ProteinKmers;
-import org.theseed.sequence.Sequence;
-import org.theseed.sequence.blast.MatchBaseProcessor;
 
 /**
  * This report displays each protein sequence found and compares it to the closest known protein in the
@@ -32,7 +31,7 @@ import org.theseed.sequence.blast.MatchBaseProcessor;
  */
 public class MatchVerifyReporter extends MatchReporter {
 
-    private enum ErrorType {
+    public enum ErrorType {
         EXACT, TOO_SHORT, TOO_LONG, CHANGED, NOT_FOUND;
     }
     // FIELDS
@@ -40,6 +39,12 @@ public class MatchVerifyReporter extends MatchReporter {
     private LevenshteinDetailedDistance computer;
     /** number of too-long proteins */
     private EnumCounter<ErrorType> counters;
+    /** total number of proteins */
+    private int protCount;
+    /** total number of records */
+    private int gtiCount;
+    /** protein ID computer */
+    private MD5Hex idFactory;
 
     /**
      * Create a new verification report.
@@ -47,34 +52,72 @@ public class MatchVerifyReporter extends MatchReporter {
      * @param output		output stream
      * @param genome		target genome that should contain the proteins found
      */
-    public MatchVerifyReporter(OutputStream output, Genome genome) {
-        super(output, genome);
+    public MatchVerifyReporter(OutputStream output) {
+        super(output);
         this.computer = new LevenshteinDetailedDistance();
         this.counters = new EnumCounter<ErrorType>(ErrorType.class);
+        try {
+            this.idFactory = new MD5Hex();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error initializing MD5 engine: " + e.getMessage());
+        }
     }
 
     @Override
-    public void initialize(MatchBaseProcessor base) throws IOException {
-        this.println("prot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes");
+    public void initialize() throws IOException {
+        this.println("sample\tprot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes");
+        clearCounters();
+    }
+
+    /**
+     * Reset all the counters to 0.
+     */
+    public void clearCounters() {
         this.counters.clear();
+        this.protCount = 0;
+        this.gtiCount = 0;
     }
 
+    /**
+     * @return the error counters.
+     */
+    public EnumCounter<ErrorType> getCounters() {
+        return this.counters;
+    }
+
+    /**
+     * @return the number of GTI records.
+     */
+    public int getRecordCount() {
+        return this.gtiCount;
+    }
+
+    /**
+     * @return the nubmer of proteins.
+     */
+    public int getProteinCount() {
+        return this.protCount;
+    }
+
+
     @Override
-    public void processSequence(String id, Location loc, String dna, List<Sequence> prots)
+    public void processSequence(String id, Location loc, String dna, List<String> prots)
             throws IOException, InterruptedException {
+        this.gtiCount++;
         // We process each protein individually.  First, however, we need to get the features in
         // the genome that overlap the target region.
         Map<String, ProteinKmers> protMap = getProteinMap(loc);
         // Now loop through the proteins from the input.
-        for (Sequence prot : prots) {
+        for (String prot : prots) {
             // Get a proteinkmers object for this protein.
-            ProteinKmers protKmers = new ProteinKmers(prot.getSequence());
+            ProteinKmers protKmers = new ProteinKmers(prot);
             // Find the closest protein in our list.  We default to not finding anything.
             double distance = 1.0;
             String fid = "";
             String comment = "No match found.";
             ErrorType error = ErrorType.NOT_FOUND;
             for (Map.Entry<String, ProteinKmers> featEntry : protMap.entrySet()) {
+                this.protCount++;
                 double newDist = protKmers.distance(featEntry.getValue());
                 if (newDist < distance) {
                     distance = newDist;
@@ -114,7 +157,8 @@ public class MatchVerifyReporter extends MatchReporter {
             // Count the match type.
             this.counters.count(error);
             // Write this sequence.
-            this.print("%s\t%s\t%s\t%s\t%4.4f\t%s", prot.getLabel(), id, loc.toString(), fid, distance, comment);
+            this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s", this.getSampleId(), this.idFactory.sequenceMD5(prot),
+                    id, loc.toString(), fid, distance, comment);
         }
     }
 
@@ -140,11 +184,6 @@ public class MatchVerifyReporter extends MatchReporter {
     }
 
     @Override
-    public void finish() {
-        this.println();
-        this.print("\t\t\t\t\t%d exact, %d too long, %d too short, %d changed, %d not found.", this.counters.getCount(ErrorType.EXACT),
-                this.counters.getCount(ErrorType.TOO_LONG), this.counters.getCount(ErrorType.TOO_SHORT),
-                this.counters.getCount(ErrorType.CHANGED), this.counters.getCount(ErrorType.NOT_FOUND));
-    }
+    public void finish() { }
 
 }

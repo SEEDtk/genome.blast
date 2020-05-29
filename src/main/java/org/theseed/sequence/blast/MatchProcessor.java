@@ -27,17 +27,18 @@ import org.kohsuke.args4j.Option;
  * -b	number of input sequences to process at a time (the default is 10)
  * -x	distance to extend the genome hit on either side (the default is 50)
  *
- * --maxE		maximum permissible e-value for a profile hit; the default is 1e-10
- * --minPct		minimum percent coverage of an incoming RNA sequence for genome hits; the default is 95.0
- * --tempDir	temporary directory for BLAST databases; the default is "Temp" in the current directory
- * --maxGap		maximum gap between adjacent hits when they are to be joined; the default is 500
- * --minIdent	minimum percent identity for genome hits; the default is 90.0
- * --minQIdent	minimum query identity fraction for profile hits; the default is 0.0
- * --minQbsc	minimum query-scaled bit score for profile hits; the default is 1.1
- * --minQuery	minimum percent query match for profile hits; the default is 65.0
- * --format		output format
- * --starts		algorithm for finding starts; the default is NEAREST
- * --sample		ID of the sample that produced these RNAs
+ * --maxE			maximum permissible e-value for a profile hit; the default is 1e-10
+ * --minPct			minimum percent coverage of an incoming RNA sequence for genome hits; the default is 95.0
+ * --minPctIdent	minimum percent identity for an RNA-to-genome hit; the default is 90.0
+ * --tempDir		temporary directory for BLAST databases; the default is "Temp" in the current directory
+ * --maxGap			maximum gap between adjacent hits when they are to be joined; the default is 500
+ * --minIdent		minimum percent identity for genome hits; the default is 90.0
+ * --minQIdent		minimum query identity fraction for profile hits; the default is 0.0
+ * --minQbsc		minimum query-scaled bit score for profile hits; the default is 1.1
+ * --minQuery		minimum percent query match for profile hits; the default is 65.0
+ * --format			output format
+ * --starts			algorithm for finding starts; the default is NEAREST
+ * --sample			ID of the sample that produced these RNAs
  *
  * @author Bruce Parrello
  *

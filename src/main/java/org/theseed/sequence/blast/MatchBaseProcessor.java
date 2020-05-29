@@ -57,55 +57,69 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     /** RNA sequences in the current batch */
     private DnaDataStream rnaStream;
     /** map of sequence IDs to proteins for the current batch */
-    private Map<String, List<Sequence>> protMap;
+    private Map<String, List<String>> protMap;
     /** DNA translator for the genome's genetic code */
     private LocationFixer xlator;
     /** number of batches processed */
     private int batchNum;
-    /** current protein number */
-    private int protNum;
     /** current sample ID */
     private String sample;
 
     // COMMAND-LINE OPTIONS
+
     /** number of DNA sequences to submit in each BLAST call */
     @Option(name = "-b", aliases = { "--batchSize",
             "--batch" }, metaVar = "1", usage = "number of input sequences to submit to each BLAST call")
     private int batchSize;
+
     /** distance to extend the genome hit on either side */
     @Option(name = "-x", aliases = {
             "--extend" }, metaVar = "20", usage = "distance to extend the genome hit on either side")
     private int extend;
+
     /** minimum percent of query coverage for an RNA-to-genome match */
     @Option(name = "--minPct", metaVar = "95", usage = "minimum percent of RNA query that must match genome DNA")
     private double minPct;
+
+    /** minimum percent identity for an RNA-to-genome match */
+    @Option(name = "--minPctIdent", metaVar = "90", usage = "minimum percent identity between RNA query and genome DNA")
+    private double minPctIdent;
+
     /** maximum permissible e-value */
     @Option(name = "--maxE", aliases = {
             "--evalue" }, metaVar = "1e-20", usage = "maximum permissible e-value for a match")
     private double eValue;
+
     /** temporary directory for BLAST database */
     @Option(name = "--tempDir", metaVar = "Tmp", usage = "temporary directory for BLAST databases")
     private File tempDir;
+
     /** maximum gap between adjacent sequences */
     @Option(name = "--maxGap", metaVar = "100", usage = "maximum gap between proteins to join into an operon")
     private int maxGap;
+
     /** output format */
     @Option(name = "--format", aliases = { "--outFormat", "--outFmt" }, usage = "output format")
     private MatchReporter.Type outFormat;
+
     /** minimum percent identity */
     @Option(name = "--minIdent", aliases = { "--percIdentity",
             "--minI" }, metaVar = "75", usage = "minimum percent identity for a genome hit")
     private double minPctIdentity;
+
     /** minimum query-scaled bit score */
     @Option(name = "--minQbsc", metaVar = "1.1", usage = "minimum acceptable query-scaled bit score for profile hits")
     private double minQbsc;
+
     /** minimum query identity fraction */
     @Option(name = "--minQIdent", metaVar = "0.5", usage = "minimum acceptable query identity fraction for profile hits")
     private double minQIdent;
+
     /** minimum percent query coverage for a legitimate hit */
     @Option(name = "--minQuery", aliases = {
             "--minQ" }, metaVar = "75", usage = "minimum percent of query sequence that must match in a profile hit")
     private double minPctQuery;
+
     /** algorithm for finding starts */
     @Option(name = "--starts", usage = "algorithm for finding start codons from profile hits")
     private LocationFixer.Type algorithm;
@@ -125,16 +139,16 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         this.batchSize = 10;
         this.eValue = 1e-10;
         this.minPct = 95.0;
+        this.minPctIdent = 90.0;
         this.maxGap = 500;
         this.extend = 50;
-        this.minPctIdentity = 90.0;
-        this.minPctQuery = 65.0;
-        this.minQbsc = 1.1;
-        this.minQIdent = 0.0;
+        this.minPctIdentity = 34.0;
+        this.minPctQuery = 48.0;
+        this.minQbsc = 0.62;
+        this.minQIdent = 0.29;
         this.tempDir = new File(System.getProperty("user.dir"), "Temp");
         this.outFormat = MatchReporter.Type.GTI;
         this.reporter = null;
-        this.protNum = 1;
         this.algorithm = LocationFixer.Type.NEAREST;
     }
 
@@ -170,7 +184,9 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         if (this.minPct < 0.0 || this.minPct > 100.0)
             throw new IllegalArgumentException("Minimum RNA match percent must be between 0 and 100.");
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity must be between 0 and 100.");
+            throw new IllegalArgumentException("Minimum percent identity for profiles must be between 0 and 100.");
+        if (this.minPctIdent < 0.0 || this.minPctIdent > 100.0)
+            throw new IllegalArgumentException("Minimum percent identity for genome must be between 0 and 100.");
         if (this.minQbsc < 0.0 || this.minQbsc > 10.0)
             throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
         if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
@@ -209,8 +225,8 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 throw new IOException("Interruption during BLAST DB creation: " + e.getMessage());
             }
         // Create the output report.
-        this.reporter = this.outFormat.create(outStream, this.getGenome());
-        reporter.initialize(this);
+        this.reporter = this.outFormat.create(outStream);
+        reporter.initialize();
     }
 
     /**
@@ -222,53 +238,55 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      */
     protected void runGenome(String sample, File rnaFile)
             throws IOException, InterruptedException, FileNotFoundException {
-                try {
-                    // Save the sample ID.
-                    this.sample = sample;
-                    // Create the BLAST database from the genome.
-                    File tempFile = File.createTempFile("blast", ".fasta", this.tempDir);
-                    this.genomeDB = DnaBlastDB.create(tempFile, getGenome());
-                    this.genomeDB.deleteOnExit();
-                    // Create the BLAST parameters.
-                    this.mainParms = new BlastParms().maxE(this.eValue).pctLenOfQuery(this.minPct).minPercent(this.minPctIdentity);
-                    // First, we must find the protein regions in the DNA.  We use the profiler to get a list
-                    // of blast hits for each RNA sequence.
-                    log.info("Profiling the RNA sequences for protein regions.");
-                    BlastParms parms = new BlastParms().maxE(this.eValue).pctLenOfQuery(this.minPctQuery)
-                            .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent);
-                    Map<String, List<BlastHit>> hitMap = this.profiler.profile(this.rnaDB, parms);
-                    log.info("{} contigs contained proteins.", hitMap.size());
-                    // This DNA stream will hold the current batch of RNA sequence fragments found.
-                    this.rnaStream = new DnaDataStream(this.batchSize, this.getGenome().getGeneticCode());
-                    // For each sequence, this will contain the proteins found.
-                    this.protMap = new HashMap<String, List<Sequence>>();
-                    // Denote no batches have been processed yet.
-                    this.batchNum = 0;
-                    // Now we loop through all the RNA sequences, processing the ones that have hits.
-                    try (FastaInputStream rnaSequences = new FastaInputStream(rnaFile)) {
-                        for (Sequence rnaSeq : rnaSequences) {
-                            // Get the hits for this sequence.
-                            List<BlastHit> hits = hitMap.get(rnaSeq.getLabel());
-                            if (hits != null) {
-                                // Insure there is room in this batch for a new sequence.
-                                if (rnaStream.size() >= this.batchSize) {
-                                    this.processBatch();
-                                    rnaStream.clear();
-                                    protMap.clear();
-                                }
-                                // Find all the proteins in the contig and compute their DNA.
-                                this.processSequence(rnaSeq, hits);
-                            }
+        try {
+            // Save the sample ID.
+            this.sample = sample;
+            // Initialize the report.
+            reporter.startSection(this.genome, this.sample);
+            // Create the BLAST database from the genome.
+            File tempFile = File.createTempFile("blast", ".fasta", this.tempDir);
+            this.genomeDB = DnaBlastDB.create(tempFile, getGenome());
+            this.genomeDB.deleteOnExit();
+            // Create the BLAST parameters.
+            this.mainParms = new BlastParms().maxE(this.eValue).pctLenOfQuery(this.minPct).minPercent(this.minPctIdent);
+            // First, we must find the protein regions in the DNA.  We use the profiler to get a list
+            // of blast hits for each RNA sequence.
+            log.info("Profiling the RNA sequences for protein regions.");
+            BlastParms parms = new BlastParms().maxE(this.eValue).pctLenOfQuery(this.minPctQuery)
+                    .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent);
+            Map<String, List<BlastHit>> hitMap = this.profiler.profile(this.rnaDB, parms);
+            log.info("{} contigs contained proteins.", hitMap.size());
+            // This DNA stream will hold the current batch of RNA sequence fragments found.
+            this.rnaStream = new DnaDataStream(this.batchSize, this.getGenome().getGeneticCode());
+            // For each sequence, this will contain the proteins found.
+            this.protMap = new HashMap<String, List<String>>();
+            // Denote no batches have been processed yet.
+            this.batchNum = 0;
+            // Now we loop through all the RNA sequences, processing the ones that have hits.
+            try (FastaInputStream rnaSequences = new FastaInputStream(rnaFile)) {
+                for (Sequence rnaSeq : rnaSequences) {
+                    // Get the hits for this sequence.
+                    List<BlastHit> hits = hitMap.get(rnaSeq.getLabel());
+                    if (hits != null) {
+                        // Insure there is room in this batch for a new sequence.
+                        if (rnaStream.size() >= this.batchSize) {
+                            this.processBatch();
+                            rnaStream.clear();
+                            protMap.clear();
                         }
+                        // Find all the proteins in the contig and compute their DNA.
+                        this.processSequence(rnaSeq, hits);
                     }
-                    this.processBatch();
-                    // Finish the output report.
-                    reporter.finish();
-                } finally {
-                    if (this.reporter != null)
-                        this.reporter.close();
                 }
             }
+            this.processBatch();
+            // Finish the output report.
+            reporter.finish();
+        } finally {
+            if (this.reporter != null)
+                this.reporter.close();
+        }
+    }
 
     /**
      * Extract protein regions from the RNA.  Each hit is extended to a full protein.  RNA regions that are close
@@ -333,41 +351,42 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             }
         }
         // Now "processed" contains each location with a protein.  The next step is to create the proteins.  Note we strip
-        // off the stop codon in the translation.  The protein is encapsulated by a Sequence object (in case we want to
-        // put it in a FASTA file), with the location as the comment and a manufactured label.  Each protein is associated
-        // with a containing location in the RNA sequence.  Close locations are combined and their sequence lists merged.
+        // off the stop codon in the translation.  Proteins with internal stops are discarded. Each protein is associated
+        // with a containing location in the RNA sequence. Close locations are combined and their protein lists merged.
         log.debug("{} proteins found in {}.", processed.size(), rnaLabel);
-        Map<Location, List<Sequence>> proteinMap = new HashMap<Location, List<Sequence>>(processed.size());
+        Map<Location, List<String>> proteinMap = new HashMap<Location, List<String>>(processed.size());
         for (ProteinHit protHit : processed) {
-            Sequence protein = new Sequence(String.format("%s.%04d", protHit.getProfile(), this.protNum++),
-                    protHit.getLoc().toString(), this.xlator.pegTranslate(rnaSequence, protHit.getLoc().getLeft(),
-                    protHit.getLoc().getLength() - 3));
-            // Now we do the location-combining.  If we find a close location in the location list, we
-            // merge it with this one.  We need a list to hold all the proteins for the merged locations.
-            List<Sequence> proteins = new ArrayList<Sequence>(10);
-            proteins.add(protein);
-            // Since we are deleting while looping, we have to use an iterator.
-            Iterator<Map.Entry<Location, List<Sequence>>> mapIter = proteinMap.entrySet().iterator();
-            while (mapIter.hasNext()) {
-                Map.Entry<Location, List<Sequence>> protEntry = mapIter.next();
-                Location other = protEntry.getKey();
-                List<Sequence> otherSeqs = protEntry.getValue();
-                if (other.distance(protHit.getLoc()) < this.maxGap) {
-                    // Combine the two locations.
-                    protHit.getLoc().merge(other);
-                    // Remove the other location from the map and add its proteins to ours.
-                    mapIter.remove();
-                    proteins.addAll(otherSeqs);
+            String protein = this.xlator.pegTranslate(rnaSequence, protHit.getLoc().getLeft(),
+                    protHit.getLoc().getLength() - 3);
+            // Only proceed if the hit is a valid protein.
+            if (! protein.contains("*")) {
+                // Now we do the location-combining.  If we find a close location in the location list, we
+                // merge it with this one.  We need a list to hold all the proteins for the merged locations.
+                List<String> proteins = new ArrayList<String>(10);
+                proteins.add(protein);
+                // Since we are deleting while looping, we have to use an iterator.
+                Iterator<Map.Entry<Location, List<String>>> mapIter = proteinMap.entrySet().iterator();
+                while (mapIter.hasNext()) {
+                    Map.Entry<Location, List<String>> protEntry = mapIter.next();
+                    Location other = protEntry.getKey();
+                    List<String> otherSeqs = protEntry.getValue();
+                    if (other.distance(protHit.getLoc()) < this.maxGap) {
+                        // Combine the two locations.
+                        protHit.getLoc().merge(other);
+                        // Remove the other location from the map and add its proteins to ours.
+                        mapIter.remove();
+                        proteins.addAll(otherSeqs);
+                    }
                 }
+                // Now we add the combined location and its proteins to the map.
+                proteinMap.put(protHit.getLoc(), proteins);
             }
-            // Now we add the combined location and its proteins to the map.
-            proteinMap.put(protHit.getLoc(), proteins);
         }
         log.debug("{} operons found in {}.", proteinMap.size(), rnaLabel);
         // We are almost done.  Now each location gets turned into an RNA fragment and gets added to the main protein map
         // along with its associated proteins.
        int rnaNum = 1;
-        for (Map.Entry<Location, List<Sequence>> protEntry : proteinMap.entrySet()) {
+        for (Map.Entry<Location, List<String>> protEntry : proteinMap.entrySet()) {
             Location loc = protEntry.getKey();
             String fragment = loc.getDna(rnaSequence);
             String fragmentId = String.format("r.%s.%04d", rnaLabel, rnaNum++);
@@ -408,7 +427,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 String dna = this.getGenome().getDna(loc);
                 // Output this result.
                 String rnaId = hit.getQueryId();
-                List<Sequence> prots = this.protMap.get(rnaId);
+                List<String> prots = this.protMap.get(rnaId);
                 this.reporter.processSequence(rnaId, loc, dna, prots);
                 outputCount++;
             }
@@ -423,11 +442,11 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         return this.sample;
     }
 
-	/**
-	 * @return the genome
-	 */
-	public Genome getGenome() {
-		return genome;
-	}
+    /**
+     * @return the genome
+     */
+    public Genome getGenome() {
+        return genome;
+    }
 
 }
