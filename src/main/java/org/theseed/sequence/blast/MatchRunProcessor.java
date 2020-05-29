@@ -88,6 +88,7 @@ public class MatchRunProcessor extends MatchBaseProcessor {
                         (System.currentTimeMillis() - start + 500) / 1000);
             }
         }
+        finish();
         log.info("All done.  {} samples processed.", sampCount);
     }
 

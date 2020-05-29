@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -64,6 +65,8 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     private int batchNum;
     /** current sample ID */
     private String sample;
+    /** rna blast log output stream */
+    private PrintWriter rnaLogStream;
 
     // COMMAND-LINE OPTIONS
 
@@ -124,6 +127,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     @Option(name = "--starts", usage = "algorithm for finding start codons from profile hits")
     private LocationFixer.Type algorithm;
 
+    /** file to track RNA-to-genome blast hits */
+    @Option(name = "--rnaLog", usage = "if specified, name of a file to contain RNA-to-genome blast hit information")
+    private File rnaLogFile;
+
     /** profile direcory */
     @Argument(index = 0, metaVar = "profileDir", usage = "protein profile directory", required = true)
     private File profileDir;
@@ -150,6 +157,8 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         this.outFormat = MatchReporter.Type.GTI;
         this.reporter = null;
         this.algorithm = LocationFixer.Type.NEAREST;
+        this.rnaLogFile = null;
+        this.rnaLogStream = null;
     }
 
     /**
@@ -193,6 +202,11 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
         if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
             throw new IllegalArgumentException("Minimum query percentation must be between 0 and 100.");
+        // Set up the RNA log.
+        if (this.rnaLogFile != null) {
+            this.rnaLogStream = new PrintWriter(this.rnaLogFile);
+            this.rnaLogStream.println("sample_id\trna_id\tgenome_loc\te_value\tp_ident\tq_ident");
+        }
     }
 
     /**
@@ -430,6 +444,11 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 List<String> prots = this.protMap.get(rnaId);
                 this.reporter.processSequence(rnaId, loc, dna, prots);
                 outputCount++;
+                // Also output the blast hit if we are logging.
+                if (this.rnaLogStream != null)
+                    this.rnaLogStream.format("%s\t%s\t%s\t%6.4g\t%6.3f\t%6.3f%n", this.sample, hit.getQueryId(),
+                            hit.getSubjectLoc().toString(), hit.getEvalue(), hit.getPercentIdentity(),
+                            hit.getQueryIdentity());
             }
         }
         log.info("Batch {} contained {} fragments and {} were output.", this.batchNum, this.rnaStream.size(), outputCount);
@@ -447,6 +466,14 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      */
     public Genome getGenome() {
         return genome;
+    }
+
+    /**
+     * Perform final cleanup.
+     */
+    public void finish() {
+        if (this.rnaLogFile != null)
+            this.rnaLogStream.close();
     }
 
 }

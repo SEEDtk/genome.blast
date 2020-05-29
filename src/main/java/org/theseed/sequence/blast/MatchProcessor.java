@@ -66,6 +66,7 @@ public class MatchProcessor extends MatchBaseProcessor {
     @Override
     protected void setDefaults() {
         this.sampleID = "N/K";
+        this.setupDefaults();
     }
 
     @Override
@@ -78,6 +79,7 @@ public class MatchProcessor extends MatchBaseProcessor {
     @Override
     public void runCommand() throws Exception {
         runGenome(this.sampleID, this.inFile);
+        finish();
     }
 
 
