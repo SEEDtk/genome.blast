@@ -169,7 +169,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
         // Process the counters.
         String counterString;
         if (counters == null) {
-            counterString = " \t \t \t \t \t ";
+            counterString = " \t \t \t \t ";
         } else {
             // Create the counter output text.
             counterString = String.format("%d\t%d\t%d\t%d\t%d", counters.getCount(ErrorType.EXACT),
