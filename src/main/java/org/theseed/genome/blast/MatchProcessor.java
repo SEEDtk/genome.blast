@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.sequence.blast;
+package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.IOException;

@@ -2,9 +2,11 @@ package org.theseed.genome.blast;
 
 import java.util.Arrays;
 
+import org.theseed.reports.VerifyAnalyzeProcessor;
 import org.theseed.sequence.blast.BlastProcessor;
-import org.theseed.sequence.blast.MatchProcessor;
-import org.theseed.sequence.blast.MatchRunProcessor;
+import org.theseed.sequence.blast.ProfileMakeProcessor;
+import org.theseed.sequence.blast.ProfileProcessor;
+import org.theseed.sequence.blast.ProfileVerifyProcessor;
 import org.theseed.utils.ICommand;
 
 /**

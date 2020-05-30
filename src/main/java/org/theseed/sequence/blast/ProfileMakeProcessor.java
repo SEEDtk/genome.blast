@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.genome.blast;
+package org.theseed.sequence.blast;
 
 import java.io.File;
 import java.io.FileNotFoundException;

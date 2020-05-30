@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.EnumCounter;
@@ -17,7 +18,10 @@ import org.theseed.io.GtoFilter;
 import org.theseed.reports.MatchReporter;
 import org.theseed.reports.MatchVerifyReporter;
 import org.theseed.reports.MatchVerifyReporter.ErrorType;
+import org.theseed.sequence.FastaOutputStream;
+import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.GtiFile;
+import org.theseed.sequence.blast.GtiFile.Record;
 import org.theseed.utils.BaseProcessor;
 
 /**
@@ -29,6 +33,14 @@ import org.theseed.utils.BaseProcessor;
  *
  * The positional parameter is the name of the match-run directory.  Each GTI file must have a GTO file
  * with a corresponding name.  The first part of the file number must be the sample ID.
+ *
+ * The command-line options are as follows.
+ *
+ * -h	display command usage
+ * -v	display more detailed progress messages
+ *
+ * --fasta	if specified, a FASTA file will be produced of each sample's protein sequences with the name
+ * 			XXXXXXX.faa, where "XXXXXXX" is the sample ID
  *
  * @author Bruce Parrello
  *
@@ -48,16 +60,25 @@ public class MatchVerifyProcessor extends BaseProcessor {
     private String sampleId;
     /** current genome */
     private Genome genome;
+    /** current FASTA output stream */
+    private FastaOutputStream fastaStream;
 
 
     // COMMAND-LINE OPTIONS
+
+    /** optional FASTA output file */
+    @Option(name = "--fasta", metaVar = "proteins.faa", usage = "option file for FASTA output of proteins")
+    private boolean fastaMode;
 
     /** directory containing match-run output */
     @Argument(index = 0, metaVar = "runDir", usage = "directory containing GTI and GTO files")
     private File runDir;
 
     @Override
-    protected void setDefaults() {	}
+    protected void setDefaults() {
+        this.fastaMode = false;
+        this.fastaStream = null;
+    }
 
     @Override
     protected boolean validateParms() throws IOException {
@@ -92,6 +113,12 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 log.info("Loading genome from {}.", gFile);
                 this.genome = new Genome(gFile);
                 log.info("Genome is {}.", genome);
+                // If FASTA mode is on, create the FASTA output file.
+                if (this.fastaMode) {
+                    File fastaFile = new File(this.runDir, sampleId + ".faa");
+                    this.fastaStream = new FastaOutputStream(fastaFile);
+                }
+                // Now produce the reports.
                 switch (genome.getDomain()) {
                 case "Archaea" :
                 case "Bacteria" :
@@ -99,6 +126,11 @@ public class MatchVerifyProcessor extends BaseProcessor {
                     break;
                 default :
                     this.countSample(gtiFile, resultStream);
+                }
+                // Clean up the FASTA output.
+                if (this.fastaMode) {
+                    this.fastaStream.close();
+                    fastaStream = null;
                 }
             }
             // Write the totals.
@@ -108,6 +140,9 @@ public class MatchVerifyProcessor extends BaseProcessor {
                             this.totals.getCount(ErrorType.TOO_LONG), this.totals.getCount(ErrorType.CHANGED),
                             this.totals.getCount(ErrorType.NOT_FOUND));
             log.info("All done.");
+        } finally {
+            if (this.fastaStream != null)
+                this.fastaStream.close();
         }
     }
 
@@ -126,10 +161,31 @@ public class MatchVerifyProcessor extends BaseProcessor {
             int gtiCount = 0;
             int protCount = 0;
             for (GtiFile.Record record : gtiStream) {
+                this.fastaCheck(record);
                 gtiCount++;
                 protCount += record.getProts().size();
             }
             showResult(resultStream, gtiCount, protCount, null);
+        }
+    }
+
+    /**
+     * If we have FASTA output, write the proteins here.
+     *
+     * @param record	current GTI record
+     *
+     * @throws IOException
+     */
+    private void fastaCheck(Record record) throws IOException {
+        if (this.fastaStream != null) {
+            String rnaId = record.getRnaId();
+            String location = record.getDnaLoc().toString();
+            int protIdx = 1;
+            for (String protein : record.getProts()) {
+                Sequence protSeq = new Sequence(String.format("%s_%03d", rnaId, protIdx), location,
+                        protein);
+                this.fastaStream.write(protSeq);
+            }
         }
     }
 
@@ -152,6 +208,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
             reporter.startSection(this.genome, this.sampleId);
             // We report on each record, then we write the totals to the result file.
             for (GtiFile.Record record : gtiStream) {
+                this.fastaCheck(record);
                 reporter.processSequence(record.getRnaId(), record.getDnaLoc(), record.getDna(), record.getProts());
             }
             showResult(resultStream, reporter.getRecordCount(), reporter.getProteinCount(), reporter.getCounters());

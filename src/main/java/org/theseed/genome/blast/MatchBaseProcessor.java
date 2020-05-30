@@ -1,4 +1,4 @@
-package org.theseed.sequence.blast;
+package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -28,6 +28,12 @@ import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.DnaDataStream;
 import org.theseed.sequence.FastaInputStream;
 import org.theseed.sequence.Sequence;
+import org.theseed.sequence.blast.BlastHit;
+import org.theseed.sequence.blast.BlastParms;
+import org.theseed.sequence.blast.DnaBlastDB;
+import org.theseed.sequence.blast.ProteinHit;
+import org.theseed.sequence.blast.ProteinProfiles;
+import org.theseed.sequence.blast.BlastHit.Longest;
 import org.theseed.utils.BaseProcessor;
 
 /**

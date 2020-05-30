@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.genome.blast;
+package org.theseed.sequence.blast;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +18,6 @@ import org.theseed.reports.BlastReporter;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
-import org.theseed.sequence.blast.BlastProcessor;
 import org.theseed.sequence.blast.ProteinProfiles;
 import org.theseed.sequence.blast.Source;
 import org.theseed.utils.BaseProcessor;
