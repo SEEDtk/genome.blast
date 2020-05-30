@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.slf4j.Logger;
@@ -39,6 +38,17 @@ public class MatchVerifyProcessor extends BaseProcessor {
     // FIELDS
     /** log facility */
     protected Logger log = LoggerFactory.getLogger(MatchVerifyProcessor.class);
+    /** error totals */
+    private EnumCounter<ErrorType> totals;
+    /** protein count */
+    private int protTotal;
+    /** gti count */
+    private int gtiTotal;
+    /** current sample ID */
+    private String sampleId;
+    /** current genome */
+    private Genome genome;
+
 
     // COMMAND-LINE OPTIONS
 
@@ -61,6 +71,11 @@ public class MatchVerifyProcessor extends BaseProcessor {
     protected void runCommand() throws Exception {
         // This will be the result summary file.
         File resultFile = new File(this.runDir, "results.txt");
+        // Initialize the totals.
+        this.totals = new EnumCounter<ErrorType>(ErrorType.class);
+        this.gtiTotal = 0;
+        this.protTotal = 0;
+        // Open the files and produce the reports.
         try (MatchVerifyReporter reporter = (MatchVerifyReporter) MatchReporter.Type.VERIFY.create(System.out);
                 PrintWriter resultStream = new PrintWriter(resultFile))  {
             // Output the report headers.
@@ -72,23 +87,26 @@ public class MatchVerifyProcessor extends BaseProcessor {
             log.info("{} genomes found in {}.", gFiles.length, this.runDir);
             for (File gFile : gFiles) {
                 // Get the GTI file and the genome.
-                String sampleId = StringUtils.removeEnd(gFile.getName(), ".gto");
+                this.sampleId = StringUtils.removeEnd(gFile.getName(), ".gto");
                 File gtiFile = new File(this.runDir, sampleId + ".gti");
                 log.info("Loading genome from {}.", gFile);
-                Genome genome = new Genome(gFile);
+                this.genome = new Genome(gFile);
                 log.info("Genome is {}.", genome);
-                // Compute the first four columns of the report.
-                String genomeInfo = String.format("%s\t%s\t%s\t%d", sampleId, genome.getId(), genome.getName(),
-                        genome.getGeneticCode());
                 switch (genome.getDomain()) {
                 case "Archaea" :
                 case "Bacteria" :
-                    this.verifySample(gtiFile, sampleId, genome, reporter, genomeInfo, resultStream);
+                    this.verifySample(gtiFile, reporter, resultStream);
                     break;
                 default :
-                    this.countSample(gtiFile, genomeInfo, resultStream);
+                    this.countSample(gtiFile, resultStream);
                 }
             }
+            // Write the totals.
+            resultStream.println();
+            resultStream.format("TOTALS\t \t \t \t%d\t%d\t%d\t%d\t%d\t%d\t%d%n", this.gtiTotal, this.protTotal,
+                    this.totals.getCount(ErrorType.EXACT), this.totals.getCount(ErrorType.TOO_SHORT),
+                            this.totals.getCount(ErrorType.TOO_LONG), this.totals.getCount(ErrorType.CHANGED),
+                            this.totals.getCount(ErrorType.NOT_FOUND));
             log.info("All done.");
         }
     }
@@ -98,12 +116,11 @@ public class MatchVerifyProcessor extends BaseProcessor {
      * produce a line in the results.txt file.
      *
      * @param gtiFile		input GTI file
-     * @param genomeInfo	genome information for results.txt
      * @param resultStream	output stream for results.txt
      *
      * @throws IOException
      */
-    private void countSample(File gtiFile, String genomeInfo, PrintWriter resultStream) throws IOException {
+    private void countSample(File gtiFile, PrintWriter resultStream) throws IOException {
         log.info("Counting proteins in {}.", gtiFile);
         try (GtiFile gtiStream = new GtiFile(gtiFile)) {
             int gtiCount = 0;
@@ -112,27 +129,59 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 gtiCount++;
                 protCount += record.getProts().size();
             }
-            resultStream.format("%s\t%d\t%d\t \t \t \t \t %n", genomeInfo, gtiCount, protCount);
+            showResult(resultStream, gtiCount, protCount, null);
         }
     }
 
-    private void verifySample(File gtiFile, String sampleId, Genome genome, MatchVerifyReporter reporter,
-            String genomeInfo, PrintWriter resultStream) throws IOException, InterruptedException {
+    /**
+     * Process a sample with reliable proteins.  Here we produce a full report on all the records and proteins.
+     *
+     * @param gtiFile		input file containing GTIs
+     * @param reporter		output reporting object
+     * @param resultStream	output stream for results.txt
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void verifySample(File gtiFile, MatchVerifyReporter reporter, PrintWriter resultStream)
+            throws IOException, InterruptedException {
         log.info("Verifying proteins in {}.", gtiFile);
         try (GtiFile gtiStream = new GtiFile(gtiFile)) {
             // Initialize the current section of the report.
             reporter.clearCounters();
-            reporter.startSection(genome, sampleId);
-            // We report on each record, then we write the counters to the result file.
+            reporter.startSection(this.genome, this.sampleId);
+            // We report on each record, then we write the totals to the result file.
             for (GtiFile.Record record : gtiStream) {
                 reporter.processSequence(record.getRnaId(), record.getDnaLoc(), record.getDna(), record.getProts());
             }
-            EnumCounter<ErrorType> counters = reporter.getCounters();
-            resultStream.format("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d%n", genomeInfo, reporter.getRecordCount(),
-                    reporter.getProteinCount(), counters.getCount(ErrorType.TOO_SHORT),
-                    counters.getCount(ErrorType.EXACT), counters.getCount(ErrorType.TOO_LONG),
-                    counters.getCount(ErrorType.CHANGED), counters.getCount(ErrorType.NOT_FOUND));
+            showResult(resultStream, reporter.getRecordCount(), reporter.getProteinCount(), reporter.getCounters());
         }
+    }
+
+    /**
+     * Display a report line and update the totals.
+     *
+     * @param recordCount
+     * @param proteinCount
+     * @param counters
+     */
+    private void showResult(PrintWriter resultStream, int recordCount, int proteinCount, EnumCounter<ErrorType> counters) {
+        // Process the counters.
+        String counterString;
+        if (counters == null) {
+            counterString = " \t \t \t \t \t ";
+        } else {
+            // Create the counter output text.
+            counterString = String.format("%d\t%d\t%d\t%d\t%d", counters.getCount(ErrorType.EXACT),
+                    counters.getCount(ErrorType.TOO_SHORT), counters.getCount(ErrorType.TOO_LONG),
+                    counters.getCount(ErrorType.CHANGED), counters.getCount(ErrorType.NOT_FOUND));
+            // Accumulate the counters in the totals.
+            this.totals.sum(counters);
+        }
+        this.gtiTotal += recordCount;
+        this.protTotal += proteinCount;
+        resultStream.format("%s\t%s\t%s\t%d\t%d\t%d\t%s%n", this.sampleId, this.genome.getId(),
+                this.genome.getName(), this.genome.getGeneticCode(), recordCount, proteinCount, counterString);
     }
 
 }

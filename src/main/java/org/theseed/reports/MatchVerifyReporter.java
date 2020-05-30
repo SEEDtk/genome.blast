@@ -65,7 +65,7 @@ public class MatchVerifyReporter extends MatchReporter {
 
     @Override
     public void initialize() throws IOException {
-        this.println("sample\tprot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes");
+        this.println("sample\tprot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes\tORF");
         clearCounters();
     }
 
@@ -109,15 +109,16 @@ public class MatchVerifyReporter extends MatchReporter {
         Map<String, ProteinKmers> protMap = getProteinMap(loc);
         // Now loop through the proteins from the input.
         for (String prot : prots) {
+            this.protCount++;
             // Get a proteinkmers object for this protein.
             ProteinKmers protKmers = new ProteinKmers(prot);
             // Find the closest protein in our list.  We default to not finding anything.
             double distance = 1.0;
             String fid = "";
             String comment = "No match found.";
+            String orfSequence = "";
             ErrorType error = ErrorType.NOT_FOUND;
             for (Map.Entry<String, ProteinKmers> featEntry : protMap.entrySet()) {
-                this.protCount++;
                 double newDist = protKmers.distance(featEntry.getValue());
                 if (newDist < distance) {
                     distance = newDist;
@@ -151,14 +152,15 @@ public class MatchVerifyReporter extends MatchReporter {
                                 error = ErrorType.TOO_SHORT;
                             }
                         }
+                        orfSequence = this.getGenome().getProteinOrf(fid);
                     }
                 }
             }
             // Count the match type.
             this.counters.count(error);
             // Write this sequence.
-            this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s", this.getSampleId(), this.idFactory.sequenceMD5(prot),
-                    id, loc.toString(), fid, distance, comment);
+            this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s\t%s", this.getSampleId(), this.idFactory.sequenceMD5(prot),
+                    id, loc.toString(), fid, distance, comment, orfSequence);
         }
     }
 
