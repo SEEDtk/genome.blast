@@ -12,6 +12,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.counters.CountMap;
 import org.theseed.counters.EnumCounter;
 import org.theseed.genome.Genome;
 import org.theseed.io.GtoFilter;
@@ -26,7 +27,8 @@ import org.theseed.utils.BaseProcessor;
 
 /**
  * This command runs through the directory produced by the "mrun" command and creates a verification report
- * for all the GTI files found.  In addition, a "results.txt" file is produced that summarizes each sample.
+ * for all the GTI files found.  In addition, a "results.txt" file is produced that summarizes each sample,
+ * and a "duplicates.txt" file is produced that displays the pegs which have more than one hit.
  *
  * The profiles used in the match run are prokaryotic, so only prokaryotic genomes are fully verified.  Other
  * genomes will have basic counts displayed in results.txt, but no error reporting.
@@ -39,8 +41,7 @@ import org.theseed.utils.BaseProcessor;
  * -h	display command usage
  * -v	display more detailed progress messages
  *
- * --fasta	if specified, a FASTA file will be produced of each sample's protein sequences with the name
- * 			XXXXXXX.faa, where "XXXXXXX" is the sample ID
+ * --fasta	if specified, the name of a file to contain all of the proteins in FASTA form
  *
  * @author Bruce Parrello
  *
@@ -56,6 +57,8 @@ public class MatchVerifyProcessor extends BaseProcessor {
     private int protTotal;
     /** gti count */
     private int gtiTotal;
+    /** prokaryotic protein count */
+    private int prokProtTotal;
     /** current sample ID */
     private String sampleId;
     /** current genome */
@@ -67,8 +70,8 @@ public class MatchVerifyProcessor extends BaseProcessor {
     // COMMAND-LINE OPTIONS
 
     /** optional FASTA output file */
-    @Option(name = "--fasta", metaVar = "proteins.faa", usage = "option file for FASTA output of proteins")
-    private boolean fastaMode;
+    @Option(name = "--fasta", metaVar = "proteins.faa", usage = "file for FASTA output of proteins")
+    private File fastaFile;
 
     /** directory containing match-run output */
     @Argument(index = 0, metaVar = "runDir", usage = "directory containing GTI and GTO files")
@@ -76,7 +79,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
 
     @Override
     protected void setDefaults() {
-        this.fastaMode = false;
+        this.fastaFile = null;
         this.fastaStream = null;
     }
 
@@ -96,6 +99,11 @@ public class MatchVerifyProcessor extends BaseProcessor {
         this.totals = new EnumCounter<ErrorType>(ErrorType.class);
         this.gtiTotal = 0;
         this.protTotal = 0;
+        this.prokProtTotal = 0;
+        // If FASTA mode is on, create the FASTA output file.
+        if (this.fastaFile != null) {
+            this.fastaStream = new FastaOutputStream(this.fastaFile);
+        }
         // Open the files and produce the reports.
         try (MatchVerifyReporter reporter = (MatchVerifyReporter) MatchReporter.Type.VERIFY.create(System.out);
                 PrintWriter resultStream = new PrintWriter(resultFile))  {
@@ -113,11 +121,6 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 log.info("Loading genome from {}.", gFile);
                 this.genome = new Genome(gFile);
                 log.info("Genome is {}.", genome);
-                // If FASTA mode is on, create the FASTA output file.
-                if (this.fastaMode) {
-                    File fastaFile = new File(this.runDir, sampleId + ".faa");
-                    this.fastaStream = new FastaOutputStream(fastaFile);
-                }
                 // Now produce the reports.
                 switch (genome.getDomain()) {
                 case "Archaea" :
@@ -127,18 +130,26 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 default :
                     this.countSample(gtiFile, resultStream);
                 }
-                // Clean up the FASTA output.
-                if (this.fastaMode) {
-                    this.fastaStream.close();
-                    fastaStream = null;
-                }
             }
             // Write the totals.
             resultStream.println();
-            resultStream.format("TOTALS\t \t \t \t%d\t%d\t%d\t%d\t%d\t%d\t%d%n", this.gtiTotal, this.protTotal,
+            resultStream.format("TOTALS\t \t%d prokaryotic proteins\t \t%d\t%d\t%d\t%d\t%d\t%d\t%d%n",
+                    this.prokProtTotal, this.gtiTotal, this.protTotal,
                     this.totals.getCount(ErrorType.EXACT), this.totals.getCount(ErrorType.TOO_SHORT),
                             this.totals.getCount(ErrorType.TOO_LONG), this.totals.getCount(ErrorType.CHANGED),
                             this.totals.getCount(ErrorType.NOT_FOUND));
+            // Write the duplicate pegs.
+            CountMap<String> pegCounts = reporter.getPegCounts();
+            File dupFile = new File(this.runDir, "duplicates.txt");
+            try (PrintWriter dupStream = new PrintWriter(dupFile)) {
+                dupStream.println("peg\tcount");
+                for (CountMap<String>.Count counter : pegCounts.sortedCounts()) {
+                    String peg = counter.getKey();
+                    int count = counter.getCount();
+                    if (! peg.isEmpty() && count > 1)
+                        dupStream.format("%s\t%d%n", peg, count);
+                }
+            }
             log.info("All done.");
         } finally {
             if (this.fastaStream != null)
@@ -212,6 +223,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 reporter.processSequence(record.getRnaId(), record.getDnaLoc(), record.getDna(), record.getProts());
             }
             showResult(resultStream, reporter.getRecordCount(), reporter.getProteinCount(), reporter.getCounters());
+            this.prokProtTotal += reporter.getProteinCount();
         }
     }
 

@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.theseed.io.GtoFilter;
+import org.theseed.sequence.FastaOutputStream;
 
 /**
  * This method runs the MatchProcessor against all rna/genome pairs in a directory.  It has
@@ -75,17 +76,21 @@ public class MatchRunProcessor extends MatchBaseProcessor {
             if (! rnaFile.canRead()) {
                 log.warn("RNA file {} for {} not found or unreadable:  skipping.", rnaFile, sampleID);
             } else {
-                // Compute the output file.
+                // Compute the output files.
                 File outFile = new File(this.inDir, sampleID + ".gti");
                 OutputStream outStream = new FileOutputStream(outFile);
-                // Set up and run the sample.
-                long start = System.currentTimeMillis();
-                this.setup(gtoFile, rnaFile, outStream);
-                log.info("Processing RNA file {} for genome {}.", rnaFile, super.getGenome());
-                this.runGenome(sampleID, rnaFile);
-                sampCount++;
-                log.info("{} samples processed.  {} took {} seconds.", sampCount, sampleID,
-                        (System.currentTimeMillis() - start + 500) / 1000);
+                File protFile = new File(this.inDir, sampleID + ".faa");
+                try (FastaOutputStream protStream = new FastaOutputStream(protFile)) {
+                    // Set up and run the sample.
+                    long start = System.currentTimeMillis();
+                    this.setup(gtoFile, rnaFile, outStream);
+                    this.setProteinFastaFile(protStream);
+                    log.info("Processing RNA file {} for genome {}.", rnaFile, super.getGenome());
+                    this.runGenome(sampleID, rnaFile);
+                    sampCount++;
+                    log.info("{} samples processed.  {} took {} seconds.", sampCount, sampleID,
+                            (System.currentTimeMillis() - start + 500) / 1000);
+                }
             }
         }
         finish();

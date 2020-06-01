@@ -27,13 +27,13 @@ import org.theseed.proteins.LocationFixer;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.DnaDataStream;
 import org.theseed.sequence.FastaInputStream;
+import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinHit;
 import org.theseed.sequence.blast.ProteinProfiles;
-import org.theseed.sequence.blast.BlastHit.Longest;
 import org.theseed.utils.BaseProcessor;
 
 /**
@@ -73,6 +73,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     private String sample;
     /** rna blast log output stream */
     private PrintWriter rnaLogStream;
+    /** protein FASTA output stream */
+    private FastaOutputStream fastaOutStream;
+    /** protein output index */
+    private int protIdx;
 
     // COMMAND-LINE OPTIONS
 
@@ -165,6 +169,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         this.algorithm = LocationFixer.Type.NEAREST;
         this.rnaLogFile = null;
         this.rnaLogStream = null;
+        this.fastaOutStream = null;
     }
 
     /**
@@ -213,6 +218,17 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             this.rnaLogStream = new PrintWriter(this.rnaLogFile);
             this.rnaLogStream.println("sample_id\trna_id\tgenome_loc\te_value\tp_ident\tq_ident");
         }
+    }
+
+    /**
+     * Specify a protein FASTA output file.
+     *
+     * @param protOut	FASTA output stream for the proteins found
+     */
+    public void setProteinFastaFile(FastaOutputStream protOut) {
+        this.fastaOutStream = protOut;
+        // Clear the protein counter.
+        this.protIdx = 0;
     }
 
     /**
@@ -320,8 +336,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      *
      * @param rnaSeq	incoming full RNA sequence
      * @param hits		list of protein hits against the sequence
+     *
+     * @throws IOException
      */
-    private void processSequence(Sequence rnaSeq, List<BlastHit> hits) {
+    private void processSequence(Sequence rnaSeq, List<BlastHit> hits) throws IOException {
         String rnaSequence;
         // These variables are used to build protein IDs.  The first part is an RNA seq ID and the second part is
         // a counter value.
@@ -332,6 +350,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         int dirCount = hits.stream().mapToInt(x -> (x.getSubjectLoc().getDir() == '+' ? 1 : -1)).sum();
         int seqLen = rnaSeq.length();
         List<ProteinHit> kept = null;
+        boolean reversed = false;
         if (dirCount >= 0) {
             // Here we are working in the plus direction.
             kept = hits.stream().filter(x -> x.getSubjectLoc() instanceof FLocation)
@@ -344,6 +363,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             kept = hits.stream().filter(x -> x.getSubjectLoc() instanceof BLocation)
                     .map(x -> new ProteinHit(x.getQueryId(), x.getSubjectLoc(), seqLen)).collect(Collectors.toList());
             log.debug("{} backward hits found in {}.", kept.size(), rnaLabel);
+            reversed = true;
         }
         // At this point we have a bunch of forward locations known to correspond to proteins. We need to expand each
         // one to a start and a stop.  If we can't find a start and a stop, we toss the hit.  If the resulting
@@ -380,6 +400,9 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                     protHit.getLoc().getLength() - 3);
             // Only proceed if the hit is a valid protein.
             if (! protein.contains("*")) {
+                // Here we have a protein we intend to output.  The following method can be used by subclasses to
+                // output the proteins themselves.
+                this.recordProtein(protein, protHit.getLoc(), reversed, seqLen);
                 // Now we do the location-combining.  If we find a close location in the location list, we
                 // merge it with this one.  We need a list to hold all the proteins for the merged locations.
                 List<String> proteins = new ArrayList<String>(10);
@@ -413,6 +436,28 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             Sequence rnaFragment = new Sequence(fragmentId, loc.toString(), fragment);
             this.rnaStream.add(rnaFragment);
             this.protMap.put(fragmentId, protEntry.getValue());
+        }
+    }
+
+    /**
+     * This method records that a protein is ready for output.
+     *
+     * @param seq		sequence of the protein
+     * @param loc		location of the protein in the RNA sequence
+     * @param reversed	TRUE if the RNA sequence is reversed
+     * @param seqLen	length of the RNA sequence
+     *
+     * @throws IOException
+     */
+    protected void recordProtein(String seq, Location hitLoc, boolean reversed, int seqLen) throws IOException {
+        if (this.fastaOutStream != null) {
+            // Reverse the location if we need to.
+            Location loc = (reversed ? hitLoc.converse(seqLen) : hitLoc);
+            // Create the sequence to output.  Note the comment is the location in the RNA.
+            this.protIdx++;
+            Sequence protSeq = new Sequence(String.format("p.%9d", this.protIdx), loc.toString(), seq);
+            // Write it to the FASTA file.
+            this.fastaOutStream.write(protSeq);
         }
     }
 

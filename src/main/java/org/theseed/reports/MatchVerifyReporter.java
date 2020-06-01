@@ -14,9 +14,11 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.similarity.LevenshteinDetailedDistance;
 import org.apache.commons.text.similarity.LevenshteinResults;
+import org.theseed.counters.CountMap;
 import org.theseed.counters.EnumCounter;
 import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
+import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
 import org.theseed.sequence.MD5Hex;
 import org.theseed.sequence.ProteinKmers;
@@ -45,6 +47,8 @@ public class MatchVerifyReporter extends MatchReporter {
     private int gtiCount;
     /** protein ID computer */
     private MD5Hex idFactory;
+    /** duplicate-peg counter */
+    private CountMap<String> pegCounts;
 
     /**
      * Create a new verification report.
@@ -66,6 +70,7 @@ public class MatchVerifyReporter extends MatchReporter {
     @Override
     public void initialize() throws IOException {
         this.println("sample\tprot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes\tORF");
+        this.pegCounts = new CountMap<String>();
         clearCounters();
     }
 
@@ -104,6 +109,7 @@ public class MatchVerifyReporter extends MatchReporter {
     public void processSequence(String id, Location loc, String dna, List<String> prots)
             throws IOException, InterruptedException {
         this.gtiCount++;
+        Genome genome = this.getGenome();
         // We process each protein individually.  First, however, we need to get the features in
         // the genome that overlap the target region.
         Map<String, ProteinKmers> protMap = getProteinMap(loc);
@@ -116,7 +122,7 @@ public class MatchVerifyReporter extends MatchReporter {
             double distance = 1.0;
             String fid = "";
             String comment = "No match found.";
-            String orfSequence = "";
+            String orfLoc = "";
             ErrorType error = ErrorType.NOT_FOUND;
             for (Map.Entry<String, ProteinKmers> featEntry : protMap.entrySet()) {
                 double newDist = protKmers.distance(featEntry.getValue());
@@ -126,6 +132,7 @@ public class MatchVerifyReporter extends MatchReporter {
                     if (distance == 0.0) {
                         comment = "";
                         error = ErrorType.EXACT;
+                        orfLoc = "";
                     } else {
                         /// Here we need to analyze the nature of the disagreement.  The default is simply a change.
                         String protSeq = protKmers.getProtein();
@@ -152,15 +159,17 @@ public class MatchVerifyReporter extends MatchReporter {
                                 error = ErrorType.TOO_SHORT;
                             }
                         }
-                        orfSequence = this.getGenome().getProteinOrf(fid);
+                        orfLoc = genome.getFeature(fid).getLocation().extendToOrf(genome).toString();
                     }
                 }
             }
             // Count the match type.
             this.counters.count(error);
+            // Count the peg.
+            this.pegCounts.count(fid);
             // Write this sequence.
             this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s\t%s", this.getSampleId(), this.idFactory.sequenceMD5(prot),
-                    id, loc.toString(), fid, distance, comment, orfSequence);
+                    id, loc.toString(), fid, distance, comment, orfLoc);
         }
     }
 
@@ -187,5 +196,12 @@ public class MatchVerifyReporter extends MatchReporter {
 
     @Override
     public void finish() { }
+
+    /**
+     * @return the map of peg counts
+     */
+    public CountMap<String> getPegCounts() {
+        return this.pegCounts;
+    }
 
 }
