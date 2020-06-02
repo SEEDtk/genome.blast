@@ -64,7 +64,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     /** RNA sequences in the current batch */
     private DnaDataStream rnaStream;
     /** map of sequence IDs to proteins for the current batch */
-    private Map<String, List<String>> protMap;
+    private Map<String, List<Sequence>> protMap;
     /** DNA translator for the genome's genetic code */
     private LocationFixer xlator;
     /** number of batches processed */
@@ -166,7 +166,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         this.tempDir = new File(System.getProperty("user.dir"), "Temp");
         this.outFormat = MatchReporter.Type.GTI;
         this.reporter = null;
-        this.algorithm = LocationFixer.Type.NEAREST;
+        this.algorithm = LocationFixer.Type.BIASED;
         this.rnaLogFile = null;
         this.rnaLogStream = null;
         this.fastaOutStream = null;
@@ -295,7 +295,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             // This DNA stream will hold the current batch of RNA sequence fragments found.
             this.rnaStream = new DnaDataStream(this.batchSize, this.getGenome().getGeneticCode());
             // For each sequence, this will contain the proteins found.
-            this.protMap = new HashMap<String, List<String>>();
+            this.protMap = new HashMap<String, List<Sequence>>();
             // Denote no batches have been processed yet.
             this.batchNum = 0;
             // Now we loop through all the RNA sequences, processing the ones that have hits.
@@ -396,7 +396,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         // off the stop codon in the translation.  Proteins with internal stops are discarded. Each protein is associated
         // with a containing location in the RNA sequence. Close locations are combined and their protein lists merged.
         log.debug("{} proteins found in {}.", processed.size(), rnaLabel);
-        Map<Location, List<String>> proteinMap = new HashMap<Location, List<String>>(processed.size());
+        Map<Location, List<Sequence>> proteinMap = new HashMap<Location, List<Sequence>>(processed.size());
         for (ProteinHit protHit : processed) {
             String protein = this.xlator.pegTranslate(rnaSequence, protHit.getLoc().getLeft(),
                     protHit.getLoc().getLength() - 3);
@@ -404,19 +404,18 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             if (protein.contains("*"))
                 log.debug("{} discarded: internal stop.", protHit);
             else {
-                // Here we have a protein we intend to output.  The following method can be used by subclasses to
-                // output the proteins themselves.
-                this.recordProtein(protein, protHit.getLoc(), reversed, seqLen);
+                // Here we have a protein we intend to output.  Format it into a sequence.
+                Sequence seq = this.formatProtein(protein, protHit.getLoc(), reversed, seqLen);
                 // Now we do the location-combining.  If we find a close location in the location list, we
                 // merge it with this one.  We need a list to hold all the proteins for the merged locations.
-                List<String> proteins = new ArrayList<String>(10);
-                proteins.add(protein);
+                List<Sequence> proteins = new ArrayList<Sequence>(10);
+                proteins.add(seq);
                 // Since we are deleting while looping, we have to use an iterator.
-                Iterator<Map.Entry<Location, List<String>>> mapIter = proteinMap.entrySet().iterator();
+                Iterator<Map.Entry<Location, List<Sequence>>> mapIter = proteinMap.entrySet().iterator();
                 while (mapIter.hasNext()) {
-                    Map.Entry<Location, List<String>> protEntry = mapIter.next();
+                    Map.Entry<Location, List<Sequence>> protEntry = mapIter.next();
                     Location other = protEntry.getKey();
-                    List<String> otherSeqs = protEntry.getValue();
+                    List<Sequence> otherSeqs = protEntry.getValue();
                     if (other.distance(protHit.getLoc()) < this.maxGap) {
                         // Combine the two locations.
                         protHit.getLoc().merge(other);
@@ -433,7 +432,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         // We are almost done.  Now each location gets turned into an RNA fragment and gets added to the main protein map
         // along with its associated proteins.
        int rnaNum = 1;
-        for (Map.Entry<Location, List<String>> protEntry : proteinMap.entrySet()) {
+        for (Map.Entry<Location, List<Sequence>> protEntry : proteinMap.entrySet()) {
             Location loc = protEntry.getKey();
             String fragment = loc.getDna(rnaSequence);
             String fragmentId = String.format("r.%s.%04d", rnaLabel, rnaNum++);
@@ -444,7 +443,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     }
 
     /**
-     * This method records that a protein is ready for output.
+     * This method converts a protein string into a sequence object suitable for FASTA output.
      *
      * @param seq		sequence of the protein
      * @param loc		location of the protein in the RNA sequence
@@ -453,19 +452,16 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      *
      * @throws IOException
      */
-    protected void recordProtein(String seq, Location hitLoc, boolean reversed, int seqLen) throws IOException {
-        if (this.fastaOutStream != null) {
-            // Reverse the location if we need to.
-            Location loc = (reversed ? hitLoc.converse(seqLen) : hitLoc);
-            // Create the sequence to output.  Note the comment is the location in the RNA.
-            this.protIdx++;
-            int prefix = this.protIdx >> 12;
-            int suffix = this.protIdx & 0xFFF;
-            Sequence protSeq = new Sequence(String.format("%s.%04X_%04d", this.sample, prefix, suffix),
-                    loc.toString(), seq);
-            // Write it to the FASTA file.
-            this.fastaOutStream.write(protSeq);
-        }
+    protected Sequence formatProtein(String seq, Location hitLoc, boolean reversed, int seqLen) throws IOException {
+        // Reverse the location if we need to.
+        Location loc = (reversed ? hitLoc.converse(seqLen) : hitLoc);
+        // Create the sequence to output.  Note the comment is the location in the RNA.
+        this.protIdx++;
+        int prefix = this.protIdx >> 12;
+        int suffix = this.protIdx & 0xFFF;
+        Sequence retVal = new Sequence(String.format("%s.%04X_%04d", this.sample, prefix, suffix),
+                loc.toString(), seq);
+        return retVal;
     }
 
     /**
@@ -499,14 +495,18 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 String dna = this.getGenome().getDna(loc);
                 // Output this result.
                 String rnaId = hit.getQueryId();
-                List<String> prots = this.protMap.get(rnaId);
+                List<Sequence> protSeqs = this.protMap.get(rnaId);
+                List<String> prots = protSeqs.stream().map(x -> x.getSequence()).collect(Collectors.toList());
                 this.reporter.processSequence(rnaId, loc, dna, prots);
                 outputCount++;
-                // Also output the blast hit if we are logging.
+                // Output the blast hit if we are logging.
                 if (this.rnaLogStream != null)
                     this.rnaLogStream.format("%s\t%s\t%s\t%6.4g\t%6.3f\t%6.3f%n", this.sample, hit.getQueryId(),
                             hit.getSubjectLoc().toString(), hit.getEvalue(), hit.getPercentIdentity(),
                             hit.getQueryIdentity());
+                // Output the proteins if we have FASTA output.
+                if (this.fastaOutStream != null)
+                    this.fastaOutStream.write(protSeqs);
             }
         }
         log.info("Batch {} contained {} fragments and {} were output.", this.batchNum, this.rnaStream.size(), outputCount);
