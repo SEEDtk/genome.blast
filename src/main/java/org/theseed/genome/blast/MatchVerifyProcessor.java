@@ -5,6 +5,7 @@ package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import org.apache.commons.lang3.StringUtils;
@@ -21,9 +22,11 @@ import org.theseed.reports.MatchVerifyReporter;
 import org.theseed.reports.MatchVerifyReporter.ErrorType;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.GtiFile;
 import org.theseed.sequence.blast.GtiFile.Record;
 import org.theseed.utils.BaseProcessor;
+import java.io.OutputStream;
 
 /**
  * This command runs through the directory produced by the "mrun" command and creates a verification report
@@ -65,6 +68,8 @@ public class MatchVerifyProcessor extends BaseProcessor {
     private Genome genome;
     /** current FASTA output stream */
     private FastaOutputStream fastaStream;
+    /** output stream for report */
+    private OutputStream reportStream;
 
 
     // COMMAND-LINE OPTIONS
@@ -77,10 +82,28 @@ public class MatchVerifyProcessor extends BaseProcessor {
     @Argument(index = 0, metaVar = "runDir", usage = "directory containing GTI and GTO files")
     private File runDir;
 
+    /**
+     * Run a verification of the specified directory.  The report will be output to "report.txt".
+     *
+     * @param inDir		directory to verify
+     *
+     * @throws IOException
+     */
+    public static void verifyDirectory(File inDir) throws IOException {
+        MatchVerifyProcessor processor = new MatchVerifyProcessor();
+        processor.setDefaults();
+        processor.runDir = inDir;
+        File reportFile = new File(inDir, "report.txt");
+        processor.reportStream = new FileOutputStream(reportFile);
+        processor.validateParms();
+        processor.run();
+    }
+
     @Override
     protected void setDefaults() {
         this.fastaFile = null;
         this.fastaStream = null;
+        this.reportStream = System.out;
     }
 
     @Override
@@ -93,6 +116,8 @@ public class MatchVerifyProcessor extends BaseProcessor {
 
     @Override
     protected void runCommand() throws Exception {
+        // Insure the BLAST logging messages aren't too numerous.
+        BlastDB.configureLogging("INFO");
         // This will be the result summary file.
         File resultFile = new File(this.runDir, "results.txt");
         // Initialize the totals.
@@ -105,7 +130,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
             this.fastaStream = new FastaOutputStream(this.fastaFile);
         }
         // Open the files and produce the reports.
-        try (MatchVerifyReporter reporter = (MatchVerifyReporter) MatchReporter.Type.VERIFY.create(System.out);
+        try (MatchVerifyReporter reporter = (MatchVerifyReporter) MatchReporter.Type.VERIFY.create(this.reportStream);
                 PrintWriter resultStream = new PrintWriter(resultFile))  {
             // Output the report headers.
             reporter.initialize();

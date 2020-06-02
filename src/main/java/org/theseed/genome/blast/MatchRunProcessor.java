@@ -10,8 +10,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
 import org.theseed.io.GtoFilter;
 import org.theseed.sequence.FastaOutputStream;
+import org.theseed.sequence.blast.BlastDB;
 
 /**
  * This method runs the MatchProcessor against all rna/genome pairs in a directory.  It has
@@ -19,6 +21,9 @@ import org.theseed.sequence.FastaOutputStream;
  * parameters are the name of the profile directory and the name of the directory containing the
  * samples.  Each sample must consist of two files-- XXXXXX.assembled.fasta, which is the RNA sequence
  * FASTA file, and XXXXXX.gto, which is the target genome.  XXXXXX should be the ID of the sample.
+ * The output files are XXXXXX.gti, which contains DNA from the genome and the associated proteins found
+ * from the RNA sequences, and XXXXXX.faa, which contains the proteins and the location in each RNA they
+ * came from.
  *
  * The command-line options are as follows.
  *
@@ -38,6 +43,7 @@ import org.theseed.sequence.FastaOutputStream;
  * --minQuery		minimum percent query match for profile hits; the default is 65.0
  * --format			output format
  * --starts			algorithm for finding starts; the default is NEAREST
+ * --verify			if specified, a verification report will be produced in the file "report.txt"
  *
  * @author Bruce Parrello
  *
@@ -46,6 +52,10 @@ public class MatchRunProcessor extends MatchBaseProcessor {
 
     // COMMAND-LINE OPTIONS
 
+    /** if specified, a verification report will be produced in the directory after the run */
+    @Option(name = "--verify", usage = "if specified, a verification report will be produced")
+    private boolean verify;
+
     /** directory containing samples */
     @Argument(index = 1, usage = "directory containing sample FASTA files and genomes")
     private File inDir;
@@ -53,6 +63,7 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     @Override
     protected void setDefaults() {
         this.setupDefaults();
+        this.verify = false;
     }
 
     @Override
@@ -66,6 +77,8 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     @Override
     protected void runCommand() throws Exception {
         int sampCount = 0;
+        // Insure the BLAST messages aren't too numerous.
+        BlastDB.configureLogging("INFO");
         // Loop through the input directory.
         File[] gtoFiles = GtoFilter.getAll(this.inDir);
         log.info("{} GTO files found in {}.", gtoFiles.length, this.inDir);
@@ -94,7 +107,11 @@ public class MatchRunProcessor extends MatchBaseProcessor {
             }
         }
         finish();
-        log.info("All done.  {} samples processed.", sampCount);
+        log.info("{} samples processed.", sampCount);
+        if (this.verify) {
+            log.info("Producing verification reports.");
+            MatchVerifyProcessor.verifyDirectory(this.inDir);
+        }
     }
 
 }

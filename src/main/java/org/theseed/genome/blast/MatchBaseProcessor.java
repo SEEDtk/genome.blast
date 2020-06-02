@@ -372,7 +372,9 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         for (ProteinHit protHit : kept) {
             boolean ok = this.xlator.fix(protHit.getLoc(), rnaSequence);
             // Only proceed if we successfully extended to a start and stop.
-            if (ok) {
+            if (! ok)
+                log.debug("{} discarded:  could not extend to a start and stop.", protHit);
+            else {
                 // Find out if there is already a location with the same stop.
                 final int stopLoc = protHit.getLoc().getRight();
                 Optional<ProteinHit> rival = processed.stream().filter(x -> x.getLoc().getRight() == stopLoc).findFirst();
@@ -399,7 +401,9 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             String protein = this.xlator.pegTranslate(rnaSequence, protHit.getLoc().getLeft(),
                     protHit.getLoc().getLength() - 3);
             // Only proceed if the hit is a valid protein.
-            if (! protein.contains("*")) {
+            if (protein.contains("*"))
+                log.debug("{} discarded: internal stop.", protHit);
+            else {
                 // Here we have a protein we intend to output.  The following method can be used by subclasses to
                 // output the proteins themselves.
                 this.recordProtein(protein, protHit.getLoc(), reversed, seqLen);
@@ -455,7 +459,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             Location loc = (reversed ? hitLoc.converse(seqLen) : hitLoc);
             // Create the sequence to output.  Note the comment is the location in the RNA.
             this.protIdx++;
-            Sequence protSeq = new Sequence(String.format("p.%9d", this.protIdx), loc.toString(), seq);
+            int prefix = this.protIdx >> 12;
+            int suffix = this.protIdx & 0xFFF;
+            Sequence protSeq = new Sequence(String.format("%s.%04X_%04d", this.sample, prefix, suffix),
+                    loc.toString(), seq);
             // Write it to the FASTA file.
             this.fastaOutStream.write(protSeq);
         }

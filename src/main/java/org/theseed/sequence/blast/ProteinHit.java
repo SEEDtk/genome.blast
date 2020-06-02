@@ -46,4 +46,9 @@ public class ProteinHit {
     public FLocation getLoc() {
         return this.loc;
     }
+
+    @Override
+    public String toString() {
+        return (profile != null ? profile : "null") + "->" + (loc != null ? loc.toString() : "null");
+    }
 }
