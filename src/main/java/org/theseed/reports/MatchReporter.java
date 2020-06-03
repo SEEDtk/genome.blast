@@ -20,7 +20,7 @@ import org.theseed.locations.Location;
 public abstract class MatchReporter extends BaseReporter {
 
     public enum Type {
-        GTI, VERIFY;
+        SUMMARY, VERIFY;
 
         /**
          * Construct an RNA Sequence Matching report of this type.
@@ -30,8 +30,8 @@ public abstract class MatchReporter extends BaseReporter {
         public MatchReporter create(OutputStream output) {
             MatchReporter retVal = null;
             switch (this) {
-            case GTI :
-                retVal = new MatchGtiReporter(output);
+            case SUMMARY :
+                retVal = new MatchSummaryReporter(output);
                 break;
             case VERIFY :
                 retVal = new MatchVerifyReporter(output);
@@ -75,7 +75,14 @@ public abstract class MatchReporter extends BaseReporter {
     public void startSection(Genome genome, String sampleId) {
         this.genome = genome;
         this.sampleId = sampleId;
+        this.beginSection();
     }
+
+    /**
+     * Perform start-of-section processing.
+     */
+    protected abstract void beginSection();
+
     /**
      * Process the output from a sequence.
      *
@@ -88,6 +95,11 @@ public abstract class MatchReporter extends BaseReporter {
      * @throws IOException
      */
     public abstract void processSequence(String id, Location loc, String dna, List<String> prots) throws IOException, InterruptedException;
+
+    /**
+     * Complete a section.
+     */
+    public abstract void endSection();
 
     /**
      * Finish the report.

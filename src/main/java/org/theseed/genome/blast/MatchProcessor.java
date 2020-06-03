@@ -4,10 +4,16 @@
 package org.theseed.genome.blast;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.kohsuke.args4j.Argument;
-import org.kohsuke.args4j.Option;
+import org.theseed.reports.MatchReporter;
+import org.theseed.sequence.blast.BlastDB;
 
 /**
  * This is designed to find ground-truth proteins from RNA sequences that correspond to a known genome.
@@ -17,8 +23,9 @@ import org.kohsuke.args4j.Option;
  * and then the RNA that produced them is blasted against the genome contigs to find the source location.
  * The source location DNA is then output along with the protein sequences.
  *
- * The positional parameters are the name of the profile directory, the name of the RNA sequence file,
- * and the name of the genome file.
+ * The positional parameters are the name of the profile directory, the name of the input directory,
+ * and the names of one or more samples to process.  Each sample XXXXXXXX must have a GTO file with
+ * the name XXXXXXXX.gto and an RNA FASTA file with the name XXXXXXXX.assembled.fasta.
  *
  * The command-line options are as follows.
  *
@@ -36,49 +43,73 @@ import org.kohsuke.args4j.Option;
  * --minQIdent		minimum query identity fraction for profile hits; the default is 0.0
  * --minQbsc		minimum query-scaled bit score for profile hits; the default is 1.1
  * --minQuery		minimum percent query match for profile hits; the default is 65.0
- * --format			output format
  * --starts			algorithm for finding starts; the default is NEAREST
- * --sample			ID of the sample that produced these RNAs
  *
  * @author Bruce Parrello
  *
  */
 public class MatchProcessor extends MatchBaseProcessor {
 
+    /**
+     * This is a dinky little object that contains the names of the files for a sample.
+     */
+    protected class SampleFiles {
+        public File rnaFile;
+        public File gtoFile;
 
+        public SampleFiles(String sample) {
+            this.rnaFile = new File(inDir, sample + ".assembled.fasta");
+            this.gtoFile = new File(inDir, sample + ".gto");
+        }
+    }
 
+    // FIELDS
+    /** list of samples to process */
+    private SortedMap<String, SampleFiles> sampleMap;
 
     // COMMAND-LINE OPTION
 
-    /** ID of the sample that produced the RNAs */
-    @Option(name = "--sample", metaVar="SRR134798", usage = "ID of source sample, to be displayed in report")
-    private String sampleID;
-
     /** RNA sequence input file */
-    @Argument(index = 1, metaVar = "rna.fasta", usage = "RNA sequence input file", required = true)
-    private File inFile;
+    @Argument(index = 1, metaVar = "inDir", usage = "input directory containing samples", required = true)
+    private File inDir;
 
-    /** file containing the target genome */
-    @Argument(index = 2, metaVar = "genome.gto", usage = "target genome file containing the proteins",
-            required = true)
-    private File genomeFile;
+    /** IDs of samples to process */
+    @Argument(index = 2, metaVar = "sample1 sample2 ...", usage = "IDs of samples to process",
+            multiValued = true)
+    private List<String> samples;
+
 
     @Override
     protected void setDefaults() {
-        this.sampleID = "N/K";
         this.setupDefaults();
+        this.sampleMap = new TreeMap<String, SampleFiles>();
     }
 
     @Override
     protected boolean validateParms() throws IOException {
-        setup(this.genomeFile, this.inFile, System.out);
-        validateCommonParms();
+        validateCommonParms(MatchReporter.Type.SUMMARY, System.out);
+        // Verify all the input samples.
+        for (String sample : samples) {
+            SampleFiles files = this.new SampleFiles(sample);
+            if (! files.gtoFile.canRead())
+                throw new FileNotFoundException("GTO file " + files.gtoFile + " not found or unreadable.");
+            if (! files.rnaFile.canRead())
+                throw new FileNotFoundException("RNA file " + files.rnaFile + " not found or unreadable.");
+            this.sampleMap.put(sample, files);
+        }
         return true;
     }
 
     @Override
     public void runCommand() throws Exception {
-        runGenome(this.sampleID, this.inFile);
+        // Turn off BLAST details.
+        BlastDB.configureLogging("INFO");
+        // Run all the samples.
+        for (Map.Entry<String, SampleFiles> sampleEntry : this.sampleMap.entrySet()) {
+            SampleFiles files = sampleEntry.getValue();
+            String sampleId = sampleEntry.getKey();
+            this.runSample(this.inDir, files.gtoFile, sampleId, files.rnaFile);
+        }
         finish();
     }
 

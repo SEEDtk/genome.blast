@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,10 +23,10 @@ import org.theseed.locations.BLocation;
 import org.theseed.locations.FLocation;
 import org.theseed.locations.Location;
 import org.theseed.proteins.LocationFixer;
+import org.theseed.reports.MatchOutputStream;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.DnaDataStream;
 import org.theseed.sequence.FastaInputStream;
-import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
@@ -71,12 +70,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     private int batchNum;
     /** current sample ID */
     private String sample;
-    /** rna blast log output stream */
-    private PrintWriter rnaLogStream;
-    /** protein FASTA output stream */
-    private FastaOutputStream fastaOutStream;
     /** protein output index */
     private int protIdx;
+    /** list of output streams to produce for each genome */
+    private List<MatchOutputStream> outputs;
 
     // COMMAND-LINE OPTIONS
 
@@ -111,10 +108,6 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     @Option(name = "--maxGap", metaVar = "100", usage = "maximum gap between proteins to join into an operon")
     private int maxGap;
 
-    /** output format */
-    @Option(name = "--format", aliases = { "--outFormat", "--outFmt" }, usage = "output format")
-    private MatchReporter.Type outFormat;
-
     /** minimum percent identity */
     @Option(name = "--minIdent", aliases = { "--percIdentity",
             "--minI" }, metaVar = "75", usage = "minimum percent identity for a genome hit")
@@ -136,10 +129,6 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
     /** algorithm for finding starts */
     @Option(name = "--starts", usage = "algorithm for finding start codons from profile hits")
     private LocationFixer.Type algorithm;
-
-    /** file to track RNA-to-genome blast hits */
-    @Option(name = "--rnaLog", usage = "if specified, name of a file to contain RNA-to-genome blast hit information")
-    private File rnaLogFile;
 
     /** profile direcory */
     @Argument(index = 0, metaVar = "profileDir", usage = "protein profile directory", required = true)
@@ -164,21 +153,21 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         this.minQbsc = 0.62;
         this.minQIdent = 0.29;
         this.tempDir = new File(System.getProperty("user.dir"), "Temp");
-        this.outFormat = MatchReporter.Type.GTI;
         this.reporter = null;
         this.algorithm = LocationFixer.Type.BIASED;
-        this.rnaLogFile = null;
-        this.rnaLogStream = null;
-        this.fastaOutStream = null;
+        this.outputs = new ArrayList<MatchOutputStream>(5);
     }
 
     /**
      * Validate the common parameters for a match run.
      *
+     * @param type			type of the master report
+     * @param outStream		output stream for the master report
+     *
      * @throws FileNotFoundException
      * @throws IOException
      */
-    protected void validateCommonParms() throws FileNotFoundException, IOException {
+    protected void validateCommonParms(MatchReporter.Type type, OutputStream outStream) throws FileNotFoundException, IOException {
         // Validate the profile directory.
         if (! this.profileDir.isDirectory())
             throw new FileNotFoundException("Profile directory " + this.profileDir +
@@ -213,22 +202,20 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
         if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
             throw new IllegalArgumentException("Minimum query percentation must be between 0 and 100.");
-        // Set up the RNA log.
-        if (this.rnaLogFile != null) {
-            this.rnaLogStream = new PrintWriter(this.rnaLogFile);
-            this.rnaLogStream.println("sample_id\trna_id\tgenome_loc\te_value\tp_ident\tq_ident");
-        }
+        // Create the output report.
+        this.reporter = type.create(outStream);
+        reporter.initialize();
     }
 
     /**
-     * Specify a protein FASTA output file.
+     * Specify an output stream for the current genome.  This is a fluent interface to make it easy to
+     * specify more than one in a single statement.
      *
      * @param protOut	FASTA output stream for the proteins found
      */
-    public void setProteinFastaFile(FastaOutputStream protOut) {
-        this.fastaOutStream = protOut;
-        // Clear the protein counter.
-        this.protIdx = 0;
+    public MatchBaseProcessor setOutput(MatchOutputStream protOut) {
+        this.outputs.add(protOut);
+        return this;
     }
 
     /**
@@ -237,13 +224,12 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      * @param sampleId		ID of the current sample
      * @param gFile			file containing the genome
      * @param rnaFile		file containing the RNA input
-     * @param outStream 	output stream for report
      *
      * @throws IOException
      * @throws FileNotFoundException
      * @throws InterruptedException
      */
-    protected void setup(File gFile, File rnaFile, OutputStream outStream) throws IOException, FileNotFoundException {
+    protected void setup(File gFile, File rnaFile) throws IOException, FileNotFoundException {
         // Read the genome.
         log.info("Loading genome from {}.", gFile);
         this.genome = new Genome(gFile);
@@ -260,9 +246,10 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
             } catch (InterruptedException e) {
                 throw new IOException("Interruption during BLAST DB creation: " + e.getMessage());
             }
-        // Create the output report.
-        this.reporter = this.outFormat.create(outStream);
-        reporter.initialize();
+        // Clear the protein index number.
+        this.protIdx = 0;
+        // Denote there are no output files.
+        this.outputs.clear();
     }
 
     /**
@@ -277,7 +264,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         try {
             // Save the sample ID.
             this.sample = sample;
-            // Initialize the report.
+            // Initialize the report for this genome.
             reporter.startSection(this.genome, this.sample);
             // Create the BLAST database from the genome.
             File tempFile = File.createTempFile("blast", ".fasta", this.tempDir);
@@ -316,11 +303,12 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 }
             }
             this.processBatch();
-            // Finish the output report.
-            reporter.finish();
+            // End this section of the report.
+            reporter.endSection();
         } finally {
-            if (this.reporter != null)
-                this.reporter.close();
+            // Close all the output streams.
+            for (MatchOutputStream outStream : this.outputs)
+                outStream.close();
         }
     }
 
@@ -499,17 +487,39 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 List<String> prots = protSeqs.stream().map(x -> x.getSequence()).collect(Collectors.toList());
                 this.reporter.processSequence(rnaId, loc, dna, prots);
                 outputCount++;
-                // Output the blast hit if we are logging.
-                if (this.rnaLogStream != null)
-                    this.rnaLogStream.format("%s\t%s\t%s\t%6.4g\t%6.3f\t%6.3f%n", this.sample, hit.getQueryId(),
-                            hit.getSubjectLoc().toString(), hit.getEvalue(), hit.getPercentIdentity(),
-                            hit.getQueryIdentity());
-                // Output the proteins if we have FASTA output.
-                if (this.fastaOutStream != null)
-                    this.fastaOutStream.write(protSeqs);
+                // Write the file outputs.
+                for (MatchOutputStream outStream : this.outputs)
+                    outStream.processSequence(this.getSampleID(), loc, dna, protSeqs, hit);
             }
         }
         log.info("Batch {} contained {} fragments and {} were output.", this.batchNum, this.rnaStream.size(), outputCount);
+    }
+
+    /**
+     * Process a single sample with standard outputs.
+     *
+     * @param outDir	output directory
+     * @param gtoFile	input genome file
+     * @param sampleID	ID of this sample
+     * @param rnaFile	input RNA file
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    protected void runSample(File outDir, File gtoFile, String sampleID, File rnaFile)
+            throws IOException, InterruptedException {
+        // Set up the sample.
+        long start = System.currentTimeMillis();
+        this.setup(gtoFile, rnaFile);
+        // Compute the output files.
+        File outFile = new File(outDir, sampleID + ".gti");
+        this.setOutput(MatchOutputStream.Type.GTI.create(outFile, this.getGenome(), sampleID));
+        File protFile = new File(outDir, sampleID + ".faa");
+        this.setOutput(MatchOutputStream.Type.FASTA.create(protFile, this.getGenome(), sampleID));
+        // Process the genome.
+        log.info("Processing RNA file {} for genome {}.", rnaFile, this.getGenome());
+        this.runGenome(sampleID, rnaFile);
+        log.info("{} took {} seconds.", sampleID, (System.currentTimeMillis() - start + 500) / 1000);
     }
 
     /**
@@ -530,8 +540,8 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      * Perform final cleanup.
      */
     public void finish() {
-        if (this.rnaLogFile != null)
-            this.rnaLogStream.close();
+        if (this.reporter != null)
+            this.reporter.close();
     }
 
 }

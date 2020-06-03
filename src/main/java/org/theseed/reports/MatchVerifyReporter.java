@@ -204,4 +204,10 @@ public class MatchVerifyReporter extends MatchReporter {
         return this.pegCounts;
     }
 
+    @Override
+    protected void beginSection() { }
+
+    @Override
+    public void endSection() { }
+
 }

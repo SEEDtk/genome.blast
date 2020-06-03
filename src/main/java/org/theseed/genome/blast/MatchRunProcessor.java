@@ -5,14 +5,12 @@ package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.theseed.io.GtoFilter;
-import org.theseed.sequence.FastaOutputStream;
+import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.blast.BlastDB;
 
 /**
@@ -41,9 +39,9 @@ import org.theseed.sequence.blast.BlastDB;
  * --minQIdent		minimum query identity fraction for profile hits; the default is 0.0
  * --minQbsc		minimum query-scaled bit score for profile hits; the default is 1.1
  * --minQuery		minimum percent query match for profile hits; the default is 65.0
- * --format			output format
  * --starts			algorithm for finding starts; the default is NEAREST
  * --verify			if specified, a verification report will be produced in the file "report.txt"
+ * --missing		if specified, only samples without an existing GTI file will be processed
  *
  * @author Bruce Parrello
  *
@@ -56,6 +54,10 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     @Option(name = "--verify", usage = "if specified, a verification report will be produced")
     private boolean verify;
 
+    /** if specified, only samples that do not already have a GTI file will be processed */
+    @Option(name = "--missing", usage = "if specified, only new samples will be processed")
+    private boolean missingMode;
+
     /** directory containing samples */
     @Argument(index = 1, usage = "directory containing sample FASTA files and genomes")
     private File inDir;
@@ -64,13 +66,14 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     protected void setDefaults() {
         this.setupDefaults();
         this.verify = false;
+        this.missingMode = false;
     }
 
     @Override
     protected boolean validateParms() throws IOException {
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.inDir + " not found or invalid.");
-        this.validateCommonParms();
+        this.validateCommonParms(MatchReporter.Type.SUMMARY, System.out);
         return true;
     }
 
@@ -86,24 +89,14 @@ public class MatchRunProcessor extends MatchBaseProcessor {
             // Find the corresponding RNA file.
             String sampleID = StringUtils.removeEnd(gtoFile.getName(), ".gto");
             File rnaFile = new File(this.inDir, sampleID + ".assembled.fasta");
+            File outFile = new File(this.inDir, sampleID + ".gti");
             if (! rnaFile.canRead()) {
                 log.warn("RNA file {} for {} not found or unreadable:  skipping.", rnaFile, sampleID);
+            } else if (this.missingMode && outFile.exists()) {
+                log.info("Sample {} skipped-- already processed.", sampleID);
             } else {
-                // Compute the output files.
-                File outFile = new File(this.inDir, sampleID + ".gti");
-                OutputStream outStream = new FileOutputStream(outFile);
-                File protFile = new File(this.inDir, sampleID + ".faa");
-                try (FastaOutputStream protStream = new FastaOutputStream(protFile)) {
-                    // Set up and run the sample.
-                    long start = System.currentTimeMillis();
-                    this.setup(gtoFile, rnaFile, outStream);
-                    this.setProteinFastaFile(protStream);
-                    log.info("Processing RNA file {} for genome {}.", rnaFile, super.getGenome());
-                    this.runGenome(sampleID, rnaFile);
-                    sampCount++;
-                    log.info("{} samples processed.  {} took {} seconds.", sampCount, sampleID,
-                            (System.currentTimeMillis() - start + 500) / 1000);
-                }
+                this.runSample(this.inDir, gtoFile, sampleID, rnaFile);
+                sampCount++;
             }
         }
         finish();
