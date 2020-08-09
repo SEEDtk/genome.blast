@@ -7,7 +7,7 @@ import org.theseed.sequence.blast.BlastProcessor;
 import org.theseed.sequence.blast.ProfileMakeProcessor;
 import org.theseed.sequence.blast.ProfileProcessor;
 import org.theseed.sequence.blast.ProfileVerifyProcessor;
-import org.theseed.utils.ICommand;
+import org.theseed.utils.BaseProcessor;
 
 /**
  * These are various commands related to genome BLAST and matching.
@@ -26,7 +26,7 @@ public class App
         // Get the control parameter.
         String command = args[0];
         String[] newArgs = Arrays.copyOfRange(args, 1, args.length);
-        ICommand processor;
+        BaseProcessor processor;
         // Parse the parameters.
         switch (command) {
         case "match" :
@@ -52,6 +52,9 @@ public class App
             break;
         case "vanalyze" :
             processor = new VerifyAnalyzeProcessor();
+            break;
+        case "poi" :
+            processor = new PointOfInterestProcessor();
             break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);
