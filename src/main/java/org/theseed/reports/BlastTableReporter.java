@@ -5,6 +5,7 @@ package org.theseed.reports;
 
 import java.io.OutputStream;
 
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastHit.SeqData;
 
@@ -22,7 +23,7 @@ public class BlastTableReporter extends BlastReporter {
      * @param output	output stream to contain the report
      * @param sort		type of sequence (subject, query) to sort the report on
      */
-    public BlastTableReporter(OutputStream output, SortType sort) {
+    public BlastTableReporter(OutputStream output, BlastDB.SortType sort) {
         super(output, sort);
     }
 

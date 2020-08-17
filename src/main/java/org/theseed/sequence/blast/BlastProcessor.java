@@ -5,19 +5,12 @@ package org.theseed.sequence.blast;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.reports.BlastHtmlReporter;
 import org.theseed.reports.BlastReporter;
-import org.theseed.sequence.SequenceDataStream;
 import org.theseed.sequence.SequenceInputStream;
 import org.theseed.utils.BaseProcessor;
 
@@ -120,7 +113,7 @@ public class BlastProcessor extends BaseProcessor {
 
     /** sort type of output format */
     @Option(name = "--sort", usage = "type of sequence to sort on in output report")
-    private BlastReporter.SortType sortType;
+    private BlastDB.SortType sortType;
 
     /** TRUE to keep created files for BLAST databases, else FALSE */
     @Option(name = "--keep", usage = "keep BLAST database if one is created")
@@ -128,7 +121,7 @@ public class BlastProcessor extends BaseProcessor {
 
     /** color computation scheme for HTML reports */
     @Option(name = "--color", usage = "color computation scheme for hits")
-    private BlastHtmlReporter.ColorType colorType;
+    private BlastDB.ColorType colorType;
 
     /** type of query file */
     @Argument(index = 0, usage = "type of query input file", required = true)
@@ -159,8 +152,8 @@ public class BlastProcessor extends BaseProcessor {
         this.minPctSubject = 0.0;
         this.minPctIdentity = 0.0;
         this.numThreads = 1;
-        this.sortType = BlastReporter.SortType.QUERY;
-        this.colorType = BlastHtmlReporter.ColorType.ident;
+        this.sortType = BlastDB.SortType.QUERY;
+        this.colorType = BlastDB.ColorType.ident;
         this.batchSize = 20;
     }
 
@@ -211,39 +204,7 @@ public class BlastProcessor extends BaseProcessor {
             BlastParms parms = new BlastParms().maxE(this.eValue).num_threads(this.numThreads)
                     .maxPerQuery(this.maxPerQuery).pctLenOfQuery(this.minPctQuery)
                     .pctLenOfSubject(this.minPctSubject).minPercent(this.minPctIdentity);
-            // Loop through the batches in the query stream.
-            Iterator<SequenceDataStream> batcher = this.query.batchIterator(this.batchSize);
-            int batchCount = 0;
-            int seqCount = 0;
-            int hitCount = 0;
-            int missCount = 0;
-            while (batcher.hasNext()) {
-                SequenceDataStream batch = batcher.next();
-                // This set is used to track queries without hits.
-                Set<String> queryIds = batch.stream().map(x -> x.getLabel()).collect(Collectors.toSet());
-                // Record the batch.
-                batchCount++;
-                seqCount += batch.size();
-                log.info("Processing input batch {}, {} sequences read.", batchCount, seqCount);
-                // BLAST the query against the subject.
-                List<BlastHit> results = batch.blast(subject, parms);
-                for (BlastHit hit : results) {
-                    queryIds.remove(hit.getQueryId());
-                    this.reporter.recordHit(hit);
-                    hitCount++;
-                }
-                missCount += queryIds.size();
-                if (log.isDebugEnabled()) {
-                    for (String queryId : queryIds)
-                        log.debug("{} had no hits.", queryId);
-                }
-            }
-            log.info("BLAST found {} hits, {} queries had no hits.", hitCount, missCount);
-            // Write the report.
-            log.info("Writing report.  {} total sequences in {} batches were processed.", seqCount, batchCount);
-            BlastReporter.Info blastInfo = new BlastReporter.Info(subject.getBlastParms(), seqCount, missCount, hitCount);
-            this.reporter.writeReport(subject.getBlastType().toUpperCase()
-                    + " run against " + this.subjectFile.getName(), blastInfo);
+            this.subject.runBlast(this.query, this.batchSize, parms, this.reporter);
         } finally {
             this.query.close();
             this.reporter.close();

@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.Shuffler;
 import org.theseed.locations.Location;
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastHit.SeqData;
 
@@ -22,78 +23,7 @@ import org.theseed.sequence.blast.BlastHit.SeqData;
  * @author Bruce Parrello
  *
  */
-public abstract class BlastReporter extends BaseReporter implements Closeable, AutoCloseable {
-
-    /**
-     * This enum indicates the high-level sort for output.
-     */
-    public enum SortType {
-        /** sort by query, list subjects within query */
-        QUERY(BlastHit.QUERY, "queries"),
-        /** sort by subject, list queries within subject */
-        SUBJECT(BlastHit.SUBJECT, "subject sequences");
-
-        // FIELDS
-        private int sortIdx;
-        private int otherIdx;
-        private String plural;
-
-        private SortType(int idx, String plural) {
-            this.sortIdx = idx;
-            this.otherIdx = 1 - idx;
-            this.plural = plural;
-        }
-
-        /**
-         * @return the ID of the sequence being sorted on
-         *
-         * @param hit	blast hit whose sort ID is desired
-         */
-        public String idOf(BlastHit hit) {
-            return hit.getData(sortIdx).getId();
-        }
-
-        /**
-         * @return the ID of the sequence being hit
-         *
-         * @param hit	blast hit whose sequence ID is desired
-         */
-        public String targetOf(BlastHit hit) {
-            return hit.getData(otherIdx).getId();
-        }
-
-        /**
-         * @return TRUE if the hit has the specified target ID
-         *
-         * @param hit		blast hit to check
-         * @param otherId	ID of the desired target
-         */
-        public boolean targetEquals(BlastHit hit, String otherId) {
-            return otherId.contentEquals(this.targetOf(hit));
-        }
-
-        /**
-         * @return the sorting sequence data for the specified hit
-         */
-        public BlastHit.SeqData data(BlastHit hit) {
-            return hit.getData(this.sortIdx);
-        }
-
-        /**
-         * @return the target sequence data for the specified hit
-         */
-        public BlastHit.SeqData target(BlastHit hit) {
-            return hit.getData(this.otherIdx);
-        }
-
-        /**
-         * @return the plural phrase for the things being sorted
-         */
-        public String getPlural() {
-            return this.plural;
-        }
-
-    }
+public abstract class BlastReporter extends BaseReporter implements Closeable, AutoCloseable, IBlastReporter {
 
     /**
      * This enum indicates the type of BLAST report.
@@ -107,7 +37,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
          * @param stream	output stream to contain the report
          * @param type		type of sequence (SUBJECT, QUERY) by which to sort the report
          */
-        public BlastReporter create(OutputStream stream, SortType type) {
+        public BlastReporter create(OutputStream stream, BlastDB.SortType type) {
             BlastReporter retVal = null;
             switch (this) {
             case TABLE:
@@ -124,71 +54,11 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
         }
     }
 
-    /**
-     * This simple object describes the BLAST info.
-     */
-    public static class Info {
-
-        // FIELDS
-        /** BLAST parameters */
-        private String parms;
-        /** query count */
-        private int queriesIn;
-        /** number of misses */
-        private int missCount;
-        /** number of hits */
-        private int hitCount;
-
-        /**
-         * Construct the information object.
-         *
-         * @param parms		parameters for the BLAST
-         * @param queries	number of incoming queries
-         * @param misses	number of queries without a hit
-         * @param hits		total number of hits
-         */
-        public Info(String parms, int queries, int misses, int hits) {
-            this.parms = parms;
-            this.queriesIn = queries;
-            this.missCount = misses;
-            this.hitCount = hits;
-        }
-
-        /**
-         * @return the BLAST parameters
-         */
-        public String getParms() {
-            return parms;
-        }
-
-        /**
-         * @return the input query count
-         */
-        public int getQueriesIn() {
-            return queriesIn;
-        }
-
-        /**
-         * @return the query miss count
-         */
-        public int getMissCount() {
-            return missCount;
-        }
-
-        /**
-         * @return the hit count
-         */
-        public int getHitCount() {
-            return hitCount;
-        }
-
-    }
-
     // FIELDS
     /** message log */
     protected Logger log = LoggerFactory.getLogger(BlastReporter.class);
     /** target sort type (QUERY or SUBJECT) */
-    private SortType sortType;
+    private BlastDB.SortType sortType;
     /** map of sort sequences to hits */
     private SortedMap<String, List<BlastHit>> hitMap;
     /** rejection count */
@@ -200,7 +70,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      * @param output	output stream to receive report
      * @param sort		type of sequence (subject or query) to sort on
      */
-    public BlastReporter(OutputStream output, SortType sort) {
+    public BlastReporter(OutputStream output, BlastDB.SortType sort) {
         super(output);
         this.sortType = sort;
         this.hitMap = new TreeMap<String, List<BlastHit>>(new NaturalSort());
@@ -256,7 +126,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      * @param title		title to put on report
      * @param runInfo 	statistics on the run
      */
-    public void writeReport(String title, Info runInfo) {
+    public void writeReport(String title, BlastInfo runInfo) {
         this.openReport(title);
         this.showSubtitle(runInfo);
         for (String id : this.hitMap.keySet()) {
@@ -280,7 +150,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      *
      * @param runInfo	subtitle containing the BLAST parameters
      */
-    protected void showSubtitle(Info runInfo) { }
+    protected void showSubtitle(BlastInfo runInfo) { }
 
     /**
      * Start the report with the specified title.
@@ -318,15 +188,22 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
     /**
      * @return the sort type
      */
-    protected SortType getSortType() {
+    protected BlastDB.SortType getSortType() {
         return sortType;
     }
 
     /**
      * @return the number of sort sequences hit
      */
-    protected int getSequencesHit() {
+    public int getSequencesHit() {
         return this.hitMap.size();
+    }
+
+    /**
+     * @return the number of redundant hits
+     */
+    public int getRedundant() {
+        return this.rejected;
     }
 
 

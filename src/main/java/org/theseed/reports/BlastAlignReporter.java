@@ -6,6 +6,7 @@ package org.theseed.reports;
 import java.io.OutputStream;
 
 import org.theseed.locations.Location;
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastHit.SeqData;
 
@@ -25,7 +26,7 @@ public class BlastAlignReporter extends BlastReporter {
      * @param output	output stream to receive the report
      * @param sort		sort type (query or subject)
      */
-    public BlastAlignReporter(OutputStream output, SortType sort) {
+    public BlastAlignReporter(OutputStream output, BlastDB.SortType sort) {
         super(output, sort);
     }
 

@@ -13,7 +13,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.reports.BlastHtmlReporter;
+import org.theseed.reports.BlastInfo;
 import org.theseed.reports.BlastReporter;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
@@ -118,7 +118,7 @@ public class ProfileProcessor extends BaseProcessor {
 
     /** sort type of output format */
     @Option(name = "--sort", usage = "type of sequence to sort on in output report")
-    private BlastReporter.SortType sortType;
+    private BlastDB.SortType sortType;
 
     /** TRUE to keep created files for the BLAST database, else FALSE */
     @Option(name = "--keep", usage = "keep BLAST database if one is created")
@@ -126,7 +126,7 @@ public class ProfileProcessor extends BaseProcessor {
 
     /** color computation scheme for HTML reports */
     @Option(name = "--color", usage = "color computation scheme for hits")
-    private BlastHtmlReporter.ColorType colorType;
+    private BlastDB.ColorType colorType;
 
     /** minimum query-scaled bit score */
     @Option(name = "--minQbsc", metaVar = "1.2", usage = "minimum acceptable query-scaled bit score")
@@ -163,8 +163,8 @@ public class ProfileProcessor extends BaseProcessor {
         this.minQbsc = 1.1;
         this.minQIdent = 0.0;
         this.numThreads = 1;
-        this.sortType = BlastReporter.SortType.SUBJECT;
-        this.colorType = BlastHtmlReporter.ColorType.ident;
+        this.sortType = BlastDB.SortType.SUBJECT;
+        this.colorType = BlastDB.ColorType.ident;
     }
 
     @Override
@@ -229,7 +229,7 @@ public class ProfileProcessor extends BaseProcessor {
             }
             log.info("Writing report. {} total hits recorded.", hitCount);
             int seqCount = this.profiler.size();
-            BlastReporter.Info blastInfo = new BlastReporter.Info(subject.getBlastParms(), seqCount,
+            BlastInfo blastInfo = new BlastInfo(subject.getBlastParms(), seqCount,
                     seqCount - this.profiler.getHitCount(), hitCount);
             this.reporter.writeReport(subject.getBlastType().toUpperCase()
                     + " run against " + this.subjectFile.getName(), blastInfo);
