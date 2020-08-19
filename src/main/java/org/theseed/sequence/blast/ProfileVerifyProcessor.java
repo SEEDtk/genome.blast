@@ -27,10 +27,6 @@ import org.theseed.genome.Genome;
 import org.theseed.io.GtoFilter;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
-import org.theseed.sequence.blast.BlastHit;
-import org.theseed.sequence.blast.BlastParms;
-import org.theseed.sequence.blast.DnaBlastDB;
-import org.theseed.sequence.blast.ProteinProfiles;
 import org.theseed.utils.BaseProcessor;
 
 /**

@@ -15,11 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.reports.BlastInfo;
 import org.theseed.reports.BlastReporter;
-import org.theseed.sequence.blast.BlastDB;
-import org.theseed.sequence.blast.BlastHit;
-import org.theseed.sequence.blast.BlastParms;
-import org.theseed.sequence.blast.ProteinProfiles;
-import org.theseed.sequence.blast.Source;
 import org.theseed.utils.BaseProcessor;
 
 /**
