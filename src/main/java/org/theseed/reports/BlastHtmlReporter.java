@@ -39,7 +39,7 @@ public class BlastHtmlReporter extends BlastReporter {
     @Override
     protected void openReport(String title) {
         this.println("<html>");
-        this.println(header(title(title)).render());
+        this.println(head(title(title)).render());
         this.println("<body>");
         this.println(h1(title).render());
         this.println(BlastHtmlUtilities.showColorInfo(this.colorType).renderFormatted());
