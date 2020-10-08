@@ -2,7 +2,6 @@ package org.theseed.genome.blast;
 
 import java.util.Arrays;
 
-import org.theseed.reports.VerifyAnalyzeProcessor;
 import org.theseed.sequence.blast.BlastProcessor;
 import org.theseed.sequence.blast.ProfileMakeProcessor;
 import org.theseed.sequence.blast.ProfileProcessor;
@@ -18,6 +17,11 @@ import org.theseed.utils.BaseProcessor;
  * makepdb		build a profile directory from the raw profiles
  * pverify		verify a profile against a genome
  * mrun			match RNA sequences to proteins in a genome for a whole directory
+ * mverify		verify GTI files from "mrun"
+ * vanalyze		determine a cutoff value for regression results
+ * poi			add points of interest to a genome
+ * splice		merge DNA into a reference sequence
+ * fastq		hack a pair of FASTQ files into a FASTA file
  */
 public class App
 {
@@ -55,6 +59,9 @@ public class App
             break;
         case "poi" :
             processor = new PointOfInterestProcessor();
+            break;
+        case "fastq" :
+            processor = new FastQProcessor();
             break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);

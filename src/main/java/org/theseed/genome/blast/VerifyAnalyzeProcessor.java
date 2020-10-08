@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.reports;
+package org.theseed.genome.blast;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +14,7 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.reports.AnalysisList;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.FloatList;
 
