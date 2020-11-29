@@ -28,6 +28,7 @@ import org.theseed.io.GtoFilter;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command verifies a profile against a genome.  The profile will be applied to the genome's contigs.
@@ -187,7 +188,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -197,18 +198,18 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         this.blastFile = File.createTempFile("blast", ".fa", this.workDir);
         // Validate the BLAST parameters.
         if (this.eValue < 0.0)
-            throw new IllegalArgumentException("Maximum e-value cannot be negative.");
+            throw new ParseFailureException("Maximum e-value cannot be negative.");
         if (this.numThreads < 1)
-            throw new IllegalArgumentException("At least one thread is required.");
+            throw new ParseFailureException("At least one thread is required.");
         // Validate the filters.
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity must be between 0 and 100.");
+            throw new ParseFailureException("Minimum percent identity must be between 0 and 100.");
         if (this.minQbsc < 0.0 || this.minQbsc > 10.0)
-            throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
+            throw new ParseFailureException("Minimum query-scaled bit score must be between 0 and 10.");
         if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
-            throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
+            throw new ParseFailureException("Minimum query identity fraction must be between 0 and 1");
         if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
-            throw new IllegalArgumentException("Minimum query percentation must be between 0 and 100.");
+            throw new ParseFailureException("Minimum query percentation must be between 0 and 100.");
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
         this.profiler = new ProteinProfiles(this.protFile);

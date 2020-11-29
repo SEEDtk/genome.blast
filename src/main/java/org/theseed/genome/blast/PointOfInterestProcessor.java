@@ -32,6 +32,7 @@ import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command adds points of interest to a genome.  A point of interest is a feature belonging to a class defined by a percent
@@ -131,17 +132,17 @@ public class PointOfInterestProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Insure the feature type is only letters and digits.
         if (! StringUtils.isAlpha(this.featureType))
-            throw new IllegalArgumentException("Feature type must contain only letters.");
+            throw new ParseFailureException("Feature type must contain only letters.");
         // Validate the blast parameters.
         if (this.minIdentity > 100.0)
-            throw new IllegalArgumentException("MinIdent cannot be greater than 100%.");
+            throw new ParseFailureException("MinIdent cannot be greater than 100%.");
         if (this.minCoverage > 100.0)
-            throw new IllegalArgumentException("MinCoverage cannot be greater than 100%.");
+            throw new ParseFailureException("MinCoverage cannot be greater than 100%.");
         if (this.eValue <= 0.0)
-            throw new IllegalArgumentException("MaxE cannot be less than zero.");
+            throw new ParseFailureException("MaxE cannot be less than zero.");
         // Store them in the blast parameters.
         this.parms = new BlastParms().minPercent(this.minIdentity).maxE(this.eValue);
         // Verify the input file.

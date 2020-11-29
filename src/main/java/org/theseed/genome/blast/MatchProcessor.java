@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import org.kohsuke.args4j.Argument;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.blast.BlastDB;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This is designed to find ground-truth proteins from RNA sequences that correspond to a known genome.
@@ -86,7 +87,7 @@ public class MatchProcessor extends MatchBaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         validateCommonParms(MatchReporter.Type.SUMMARY, System.out);
         // Verify all the input samples.
         for (String sample : samples) {

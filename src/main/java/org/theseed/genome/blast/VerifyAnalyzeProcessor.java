@@ -17,6 +17,7 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.AnalysisList;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.FloatList;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command reads a tab-delimited file into memory with multiple named numeric columns and a single column that says "good" or "bad".
@@ -84,11 +85,11 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Verify that all the thresholds are valid.
         for (double thresh : this.thresholds) {
             if (thresh <= 0.0 || thresh >= 100.0)
-                throw new IllegalArgumentException("Invalid threshold " + Double.toString(thresh) +
+                throw new ParseFailureException("Invalid threshold " + Double.toString(thresh) +
                         ": must be between 0 and 100.");
         }
         // Read in the records.

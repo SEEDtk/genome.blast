@@ -34,6 +34,7 @@ import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinHit;
 import org.theseed.sequence.blast.ProteinProfiles;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a base class that runs a single genome against a single RNA sequence file.  It is used by
@@ -167,7 +168,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
      * @throws FileNotFoundException
      * @throws IOException
      */
-    protected void validateCommonParms(MatchReporter.Type type, OutputStream outStream) throws FileNotFoundException, IOException {
+    protected void validateCommonParms(MatchReporter.Type type, OutputStream outStream) throws ParseFailureException, IOException {
         // Validate the profile directory.
         if (! this.profileDir.isDirectory())
             throw new FileNotFoundException("Profile directory " + this.profileDir +
@@ -183,25 +184,25 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
         }
         // Validate the parameters.
         if (this.eValue >= 1.0)
-            throw new IllegalArgumentException("Invalid eValue specified.  Must be less than 1.");
+            throw new ParseFailureException("Invalid eValue specified.  Must be less than 1.");
         if (this.batchSize <= 0)
-            throw new IllegalArgumentException("Batch size must be 1 or more.");
+            throw new ParseFailureException("Batch size must be 1 or more.");
         if (this.maxGap < 0)
-            throw new IllegalArgumentException("Maximum gap must be 0 or more.");
+            throw new ParseFailureException("Maximum gap must be 0 or more.");
         if (this.extend < 0)
-            throw new IllegalArgumentException("Extension length must be 0 or more.");
+            throw new ParseFailureException("Extension length must be 0 or more.");
         if (this.minPct < 0.0 || this.minPct > 100.0)
-            throw new IllegalArgumentException("Minimum RNA match percent must be between 0 and 100.");
+            throw new ParseFailureException("Minimum RNA match percent must be between 0 and 100.");
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity for profiles must be between 0 and 100.");
+            throw new ParseFailureException("Minimum percent identity for profiles must be between 0 and 100.");
         if (this.minPctIdent < 0.0 || this.minPctIdent > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity for genome must be between 0 and 100.");
+            throw new ParseFailureException("Minimum percent identity for genome must be between 0 and 100.");
         if (this.minQbsc < 0.0 || this.minQbsc > 10.0)
-            throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
+            throw new ParseFailureException("Minimum query-scaled bit score must be between 0 and 10.");
         if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
-            throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
+            throw new ParseFailureException("Minimum query identity fraction must be between 0 and 1");
         if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
-            throw new IllegalArgumentException("Minimum query percentation must be between 0 and 100.");
+            throw new ParseFailureException("Minimum query percentation must be between 0 and 100.");
         // Create the output report.
         this.reporter = type.create(outStream);
         reporter.initialize();

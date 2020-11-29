@@ -12,6 +12,7 @@ import org.kohsuke.args4j.Option;
 import org.theseed.io.GtoFilter;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.blast.BlastDB;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This method runs the MatchProcessor against all rna/genome pairs in a directory.  It has
@@ -70,7 +71,7 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.inDir + " not found or invalid.");
         this.validateCommonParms(MatchReporter.Type.SUMMARY, System.out);

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.theseed.reports.BlastInfo;
 import org.theseed.reports.BlastReporter;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command performs a profile search against a BLAST database.  The profiles must be stored in a
@@ -163,7 +164,7 @@ public class ProfileProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -171,20 +172,20 @@ public class ProfileProcessor extends BaseProcessor {
         }
         // Validate the BLAST parameters.
         if (this.eValue < 0.0)
-            throw new IllegalArgumentException("Maximum e-value cannot be negative.");
+            throw new ParseFailureException("Maximum e-value cannot be negative.");
         if (this.maxPerQuery < 1)
-            throw new IllegalArgumentException("Cannot keep less than one result per query.");
+            throw new ParseFailureException("Cannot keep less than one result per query.");
         if (this.numThreads < 1)
-            throw new IllegalArgumentException("At least one thread is required.");
+            throw new ParseFailureException("At least one thread is required.");
         // Validate the filters.
         if (this.minPctSubject < 0.0 || this.minPctSubject > 100.0)
-            throw new IllegalArgumentException("Minimum subject coverage must be between 0 and 100.");
+            throw new ParseFailureException("Minimum subject coverage must be between 0 and 100.");
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity must be between 0 and 100.");
+            throw new ParseFailureException("Minimum percent identity must be between 0 and 100.");
         if (this.minQbsc < 0.0 || this.minQbsc > 10.0)
-            throw new IllegalArgumentException("Minimum query-scaled bit score must be between 0 and 10.");
+            throw new ParseFailureException("Minimum query-scaled bit score must be between 0 and 10.");
         if (this.minQIdent < 0.0 || this.minQIdent > 1.0)
-            throw new IllegalArgumentException("Minimum query identity fraction must be between 0 and 1");
+            throw new ParseFailureException("Minimum query identity fraction must be between 0 and 1");
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
         this.profiler = new ProteinProfiles(this.protFile);

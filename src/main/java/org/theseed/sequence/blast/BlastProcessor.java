@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.theseed.reports.BlastReporter;
 import org.theseed.sequence.SequenceInputStream;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command performs a BLAST between two files.  Each file can be a full BLAST database, a FASTA file,
@@ -158,7 +159,7 @@ public class BlastProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -166,21 +167,21 @@ public class BlastProcessor extends BaseProcessor {
         }
         // Validate the BLAST parameters.
         if (this.eValue < 0.0)
-            throw new IllegalArgumentException("Maximum e-value cannot be negative.");
+            throw new ParseFailureException("Maximum e-value cannot be negative.");
         if (this.maxPerQuery < 1)
-            throw new IllegalArgumentException("Cannot keep less than one result per query.");
+            throw new ParseFailureException("Cannot keep less than one result per query.");
         if (this.numThreads < 1)
-            throw new IllegalArgumentException("At least one thread is required.");
+            throw new ParseFailureException("At least one thread is required.");
         // Validate the filters.
         if (this.minPctQuery < 0.0 || this.minPctQuery > 100.0)
-            throw new IllegalArgumentException("Minimum query coverage must be between 0 and 100.");
+            throw new ParseFailureException("Minimum query coverage must be between 0 and 100.");
         if (this.minPctSubject < 0.0 || this.minPctSubject > 100.0)
-            throw new IllegalArgumentException("Minimum subject coverage must be between 0 and 100.");
+            throw new ParseFailureException("Minimum subject coverage must be between 0 and 100.");
         if (this.minPctIdentity < 0.0 || this.minPctIdentity > 100.0)
-            throw new IllegalArgumentException("Minimum percent identity must be between 0 and 100.");
+            throw new ParseFailureException("Minimum percent identity must be between 0 and 100.");
         // Validate the tuning parameters.
         if (this.batchSize < 1)
-            throw new IllegalArgumentException("Query batch size must be at least 1");
+            throw new ParseFailureException("Query batch size must be at least 1");
         // Create the query sequence stream.
         log.info("Opening query sequence stream of type {} in {}.", this.queryType, this.queryFile);
         this.query = this.queryType.query(this.workDir, this.queryFile, this.geneticCode);
