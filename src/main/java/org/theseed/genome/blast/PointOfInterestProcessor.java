@@ -236,7 +236,7 @@ public class PointOfInterestProcessor extends BaseProcessor {
                 }
                 // Now we are done with the genome.
                 log.info("Updating {} to {} with {} new features.", genome, outFile, count);
-                genome.update(outFile);
+                genome.save(outFile);
                 this.contigMaps.clear();
                 this.newFeats.clear();
                 newFeatures += count;
