@@ -4,10 +4,14 @@
 package org.theseed.genome.blast;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
+import java.util.zip.GZIPInputStream;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -34,6 +38,8 @@ import org.theseed.utils.ParseFailureException;
  * -m	minimum mean quality for a read to be acceptable; the default is 20
  * -k	minimum number of DNA kmers in common required for a sequence to be kept; the default is 25
  * -s	if specified, the name of a FASTA file containing a DNA sequence; only incoming sequences that have kmers in common will be kept
+ * -p	is specified, the fraction of sequences to be written to the output; the default is 1.0, so all sequences will be kept;
+ * 		a randomizer is used, so this will only be an estimate
  *
  * @author Bruce Parrello
  *
@@ -47,6 +53,8 @@ public class FastQProcessor extends BaseProcessor {
     private int seqNum;
     /** kmer object for sequence filtering (if any) */
     private DnaKmers kmerFilter;
+    /** random number generator */
+    private Random rand;
 
     // COMMAND-LINE OPTIONS
 
@@ -62,6 +70,10 @@ public class FastQProcessor extends BaseProcessor {
     @Option(name = "-s", aliases = { "--seqFilter" }, metaVar = "seq.fa", usage = "optional FASTA containing a sequence for filtering")
     private File filterFile;
 
+    /** fraction of sequences to pick */
+    @Option(name = "-p", aliases = { "--fraction", "--pickFraction" }, metaVar = "0.10", usage = "fraction of sequences to output")
+    private double pickFraction;
+
     /** input files */
     @Argument(index = 0, metaVar = "file1.fq file2.fq ...", usage = "input FASTQ files", multiValued = true)
     private List<File> inFiles;
@@ -72,6 +84,7 @@ public class FastQProcessor extends BaseProcessor {
         this.minSim = 25;
         this.filterFile = null;
         this.kmerFilter = null;
+        this.pickFraction = 1.0;
     }
 
     @Override
@@ -88,6 +101,10 @@ public class FastQProcessor extends BaseProcessor {
                 log.info("Filter sequence read from {}.", this.filterFile);
             }
         }
+        // Validate the pick fraction.
+        if (this.pickFraction <= 0.0 || this.pickFraction > 1.0)
+            throw new ParseFailureException("Pick fraction must be greater than 0 and not greater than 1.");
+        this.rand = new Random();
         // Verify the input files.
         for (File inFile : this.inFiles) {
             if (! inFile.canRead())
@@ -107,34 +124,47 @@ public class FastQProcessor extends BaseProcessor {
                 int lineOut = 0;
                 int lineSkipped = 0;
                 int lineRead = 0;
-                // Loop through the file itself.
-                try (LineReader inStream = new LineReader(inFile)) {
-                    Iterator<String> iter = inStream.iterator();
-                    // Each output sequence is four input lines.  We skip the marker line.
-                    while (iter.hasNext()) {
-                        iter.next();
-                        String sequence = iter.next();
-                        iter.next();
-                        double qual = this.parseQuality(iter.next());
-                        boolean good = true;
-                        if (qual < this.minQual)
-                            good = false;
-                        else if (this.kmerFilter != null) {
-                            // Here we have to check the kmer distance.
-                            DnaKmers kmers = new DnaKmers(sequence);
-                            good = (this.kmerFilter.similarity(kmers) >= this.minSim);
-                         }
-                          if (! good)
-                              lineSkipped++;
-                          else {
-                            String label = String.format("Sequence.%06d", ++this.seqNum);
-                            Sequence seq = new Sequence(label, String.format("mean_q=%1.4f", qual), sequence);
-                            outStream.write(seq);
-                            lineOut++;
+                // Determine the file type.  If it's .gz we need to decompress.
+                try (InputStream byteStream = new FileInputStream(inFile)) {
+                    InputStream dataStream;
+                    if (inFile.getName().endsWith(".gz"))
+                        dataStream = new GZIPInputStream(byteStream);
+                    else
+                        dataStream = byteStream;
+                    try (LineReader inStream = new LineReader(dataStream)) {
+                        // Loop through the input lines.
+                        Iterator<String> iter = inStream.iterator();
+                        // Each output sequence is four input lines.
+                        while (iter.hasNext()) {
+                            // Skip first marker label.
+                            iter.next();
+                            // Get the sequence.
+                            String sequence = iter.next();
+                            // Skip second marker label.
+                            iter.next();
+                            // Get the quality.
+                            double qual = this.parseQuality(iter.next());
+                            // Now we filter for quality and kmers.
+                            boolean good = true;
+                            if (qual < this.minQual)
+                                good = false;
+                            else if (this.kmerFilter != null) {
+                                // Here we have to check the kmer distance.
+                                DnaKmers kmers = new DnaKmers(sequence);
+                                good = (this.kmerFilter.similarity(kmers) >= this.minSim);
+                            }
+                            if (! good || this.rand.nextDouble() > this.pickFraction)
+                                lineSkipped++;
+                            else {
+                                String label = String.format("Sequence.%06d", ++this.seqNum);
+                                Sequence seq = new Sequence(label, String.format("mean_q=%1.4f", qual), sequence);
+                                outStream.write(seq);
+                                lineOut++;
+                            }
+                            lineRead++;
+                            if (log.isInfoEnabled() && lineRead % 50000 == 0)
+                                log.info("{} sequences written, {} skipped.", lineOut, lineSkipped);
                         }
-                        lineRead++;
-                        if (log.isInfoEnabled() && lineRead % 50000 == 0)
-                            log.info("{} sequences written, {} skipped.", lineOut, lineSkipped);
                     }
                 }
             }
