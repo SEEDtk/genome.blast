@@ -98,7 +98,7 @@ public class BlastProcessor extends BaseProcessor {
             usage  = "minimum percent of subject sequence that must be hit")
     private double minPctSubject;
 
-    /** minimum percent indentity */
+    /** minimum percent identity */
     @Option(name = "--minIdent", aliases = { "--percIdentity", "--minI" }, metaVar = "75",
             usage = "minimum percent identity for a hit")
     private double minPctIdentity;
