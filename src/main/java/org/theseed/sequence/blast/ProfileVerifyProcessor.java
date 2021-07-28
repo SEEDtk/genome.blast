@@ -25,6 +25,7 @@ import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
 import org.theseed.genome.Genome;
 import org.theseed.io.GtoFilter;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
 import org.theseed.utils.BaseProcessor;
@@ -45,13 +46,15 @@ import org.theseed.utils.ParseFailureException;
  * -d		working directory for storing created files; the default is the current directory
  * -t		number of threads to use; the default is 1
  *
- * --gc			genetic code for type "dna" sequence files; the default is 11
- * --maxE		maximum permissible e-value; the default is 1e-10
- * --minIdent	minimum percent identity for hits; the default is 0
- * --minQIdent	minimum query identity fraction for hits; the default is 0.0
- * --minQbsc	minimum query-scaled bit score for hits; the default is 0.0
- * --minQuery	minimum percent query match; the default is 0.0
- * --all		include both good and bad hits in the output
+ * --gc				genetic code for type "dna" sequence files; the default is 11
+ * --maxE			maximum permissible e-value; the default is 1e-10
+ * --minIdent		minimum percent identity for hits; the default is 0
+ * --minQIdent		minimum query identity fraction for hits; the default is 0.0
+ * --minQbsc		minimum query-scaled bit score for hits; the default is 0.0
+ * --minQuery		minimum percent query match; the default is 0.0
+ * --all			include both good and bad hits in the output
+ * --roleFilter		if specified, a file containing roles to use in its first column (tab-delimited with headers); use this
+ * 					to restrict processing to a subset of the profile roles
  *
  * @author Bruce Parrello
  *
@@ -168,7 +171,11 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     @Option(name = "--all", usage = "include good hits as well as bad hits in the output")
     private boolean showAll;
 
-    /** profile direcory */
+    /** filtering file to restrict roles used */
+    @Option(name = "--roleFilter", metaVar = "sours.tbl", usage = "file containing roles to use")
+    private File roleFilter;
+
+    /** profile directory */
     @Argument(index = 0, metaVar = "profileDir", usage = "protein profile directory", required = true)
     private File protFile;
 
@@ -185,6 +192,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         this.minQIdent = 0.0;
         this.numThreads = 1;
         this.showAll = false;
+        this.roleFilter = null;
     }
 
     @Override
@@ -193,6 +201,13 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
             FileUtils.forceMkdir(this.workDir);
+        }
+        // Insure the role-filter file exists.
+        Set<String> filterRoles = null;
+        if (this.roleFilter != null) {
+            log.info("Reading list of roles to use from {}.", this.roleFilter);
+            filterRoles = TabbedLineReader.readSet(this.roleFilter, "1");
+            log.info("{} roles found in filter file.", filterRoles.size());
         }
         // Create the temporary file for the BLAST databases.
         this.blastFile = File.createTempFile("blast", ".fa", this.workDir);
@@ -212,7 +227,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
             throw new ParseFailureException("Minimum query percentation must be between 0 and 100.");
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
-        this.profiler = new ProteinProfiles(this.protFile);
+        this.profiler = new ProteinProfiles(this.protFile, filterRoles);
         // Now we must convert the incoming directories to file lists.
         this.genomeFiles = new ArrayList<File>(this.sourceFiles.size() * 10);
         for (File gFile : this.sourceFiles) {
@@ -253,7 +268,8 @@ public class ProfileVerifyProcessor extends BaseProcessor {
                 List<BlastHit> hits = hitMap.getOrDefault(contigId, NO_HITS);
                 // Get the contig's feature list.
                 FeatureList contigFeatures = genome.getContigFeatures(contigId);
-                // Fill this set with all the features that have useful roles.
+                // Fill the missing-set with all the features that have useful roles.  Any features that were hit will
+                // be removed.
                 Set<String> missedFeatures = new HashSet<String>(contigFeatures.size());
                 for (Feature feat : contigFeatures) {
                     List<Role> useful = feat.getUsefulRoles(this.profiler.roleMap());
