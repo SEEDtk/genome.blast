@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
@@ -28,6 +27,7 @@ import org.theseed.io.GtoFilter;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
+import org.theseed.reports.ProfileVerifyReporter;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
@@ -49,78 +49,24 @@ import org.theseed.utils.ParseFailureException;
  * --gc				genetic code for type "dna" sequence files; the default is 11
  * --maxE			maximum permissible e-value; the default is 1e-10
  * --minIdent		minimum percent identity for hits; the default is 0
- * --minQIdent		minimum query identity fraction for hits; the default is 0.0
+ * --minQIdent		minimum query identity fraction for hits; the default is 0.50
  * --minQbsc		minimum query-scaled bit score for hits; the default is 0.0
  * --minQuery		minimum percent query match; the default is 0.0
  * --all			include both good and bad hits in the output
  * --roleFilter		if specified, a file containing roles to use in its first column (tab-delimited with headers); use this
  * 					to restrict processing to a subset of the profile roles
+ * --outFormat		output format (default LIST)
  *
  * @author Bruce Parrello
  *
  */
 public class ProfileVerifyProcessor extends BaseProcessor {
 
-    /**
-     * Representation of a blast hit
-     */
-    private static class Hit implements Comparable<Hit> {
-        public BlastHit hit;
-        public String neighborhood;
-        public String type;
-
-        private Hit(BlastHit hit, Collection<Feature> neighbors) {
-            this.hit = hit;
-            this.neighborhood = neighbors.stream().map(x -> x.getId()).collect(Collectors.joining(", "));
-        }
-
-        public static Hit goodHit(BlastHit hit, Collection<Feature> neighbors) {
-            Hit retVal = new Hit(hit, neighbors);
-            retVal.type = "good";
-            return retVal;
-        }
-
-        public static Hit badHit(BlastHit hit, Collection<Feature> neighbors) {
-            Hit retVal = new Hit(hit, neighbors);
-            retVal.type = "bad";
-            return retVal;
-        }
-
-        @Override
-        public int compareTo(Hit other) {
-            int retVal = other.type.compareTo(this.type);
-            if (retVal == 0) {
-                retVal = Double.compare(other.hit.getQueryBitScore(), this.hit.getQueryBitScore());
-                if (retVal == 0) {
-                    retVal = Double.compare(other.hit.getQueryIdentity(), this.hit.getQueryIdentity());
-                    if (retVal == 0) {
-                        retVal = Double.compare(other.hit.getPercentIdentity(), this.hit.getPercentIdentity());
-                        if (retVal == 0) {
-                            retVal = Double.compare(other.hit.getQueryPercentMatch(), this.hit.getQueryPercentMatch());
-                            if (retVal == 0) {
-                                retVal = this.hit.getQueryId().compareTo(other.hit.getQueryId());
-                                if (retVal == 0)
-                                    retVal = this.hit.getSubjectLoc().compareTo(other.hit.getSubjectLoc());
-                            }
-                        }
-                    }
-                }
-            }
-            return retVal;
-        }
-
-
-
-
-    }
-
     // FIELDS
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(ProfileVerifyProcessor.class);
     /** profile directory manager */
     private ProteinProfiles profiler;
-    /** list of saved hits */
-    private List<Hit> savedHits;
     /** count of missed features */
     private int missCount;
     /** count of eligible features */
@@ -133,6 +79,8 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     private static final List<BlastHit> NO_HITS = new ArrayList<BlastHit>();
     /** list of genome files to process */
     private List<File> genomeFiles;
+    /** output report processor */
+    private ProfileVerifyReporter reporter;
 
     // COMMAND-LINE OPTIONS
 
@@ -175,6 +123,10 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     @Option(name = "--roleFilter", metaVar = "sours.tbl", usage = "file containing roles to use")
     private File roleFilter;
 
+    /** output report format */
+    @Option(name = "--outFormat", usage = "output report format")
+    private ProfileVerifyReporter.Type reportType;
+
     /** profile directory */
     @Argument(index = 0, metaVar = "profileDir", usage = "protein profile directory", required = true)
     private File protFile;
@@ -189,10 +141,11 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         this.eValue = 1e-10;
         this.minPctIdentity = 0.0;
         this.minQbsc = 0.0;
-        this.minQIdent = 0.0;
+        this.minQIdent = 0.5;
         this.numThreads = 1;
         this.showAll = false;
         this.roleFilter = null;
+        this.reportType = ProfileVerifyReporter.Type.LIST;
     }
 
     @Override
@@ -228,6 +181,8 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         // Create the profiler.
         log.info("Opening profile directory {}.", this.protFile);
         this.profiler = new ProteinProfiles(this.protFile, filterRoles);
+        // Create the report writer.
+        this.reporter = this.reportType.create(System.out);
         // Now we must convert the incoming directories to file lists.
         this.genomeFiles = new ArrayList<File>(this.sourceFiles.size() * 10);
         for (File gFile : this.sourceFiles) {
@@ -244,11 +199,12 @@ public class ProfileVerifyProcessor extends BaseProcessor {
 
     @Override
     public void runCommand() throws Exception {
-        // Initialize the result buffers.
-        this.savedHits = new ArrayList<Hit>(5000);
+        // Initialize the result counters.
         this.missCount = 0;
         this.goodCount = 0;
         this.badCount = 0;
+        // Start the report.
+        this.reporter.openReport();
         // Create the BLAST parameters.
         BlastParms parms = new BlastParms().maxE(this.eValue).num_threads(this.numThreads).minPercent(this.minPctIdentity)
                 .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent).pctLenOfQuery(this.minPctQuery);
@@ -256,6 +212,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         for (File gFile : this.genomeFiles) {
             Genome genome = new Genome(gFile);
             log.info("Testing genome {}.", genome);
+            this.reporter.openGenome(genome.getId());
             // Create the blast database for this genome.
             DnaBlastDB blastDB = DnaBlastDB.create(this.blastFile, genome);
             blastDB.deleteOnExit();
@@ -294,30 +251,29 @@ public class ProfileVerifyProcessor extends BaseProcessor {
                             badHit = false;
                         }
                     }
-                    // If there is nothing being hit or we are saving all hits, save the hit.
+                    // Report the hit.
+                    String type = "good";
                     if (badHit) {
-                        this.savedHits.add(Hit.badHit(hit, overlap));
+                        type = "bad";
                         this.badCount++;
-                    } else if (this.showAll)
-                        this.savedHits.add(Hit.goodHit(hit, overlap));
+                    }
+                    this.reporter.processHit(type, genome.getId(), hit.getQueryId(), profileRoles.get(0).getId(), hit, overlap);
                 }
                 // Count the missed features.
                 int misses = missedFeatures.size();
                 this.missCount += misses;
+                // Add them to the report.
+                for (String fid : missedFeatures) {
+                    Feature feat = genome.getFeature(fid);
+                    List<Role> roles = feat.getUsefulRoles(this.profiler.roleMap());
+                    this.reporter.processMiss(roles.get(0).getId(), feat);
+                }
                 log.info("{} features not found in contig {}.", misses, contigId);
             }
+            this.reporter.closeGenome();
         }
         log.info("{} total features missed out of {} possible. {} bad hits.", this.missCount,
                 this.goodCount, this.badCount);
-        // Now we produce the report.
-        this.savedHits.sort(null);
-        System.out.println("type\tprofile\tq_len\thit_loc\te_value\tp_ident\tbit_score\tq_bit_score\tq_ident\tq_percent\tneighborhood");
-        for (Hit profileHit : this.savedHits) {
-            BlastHit hit = profileHit.hit;
-            System.out.format("%s\t%s\t%d\t%s\t%4.2e\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%4.2f\t%s%n", profileHit.type, hit.getQueryId(),
-                    hit.getQueryLen(), hit.getSubjectLoc(), hit.getEvalue(), hit.getPercentIdentity(), hit.getBitScore(),
-                    hit.getQueryBitScore(), hit.getQueryIdentity(), hit.getQueryPercentMatch(), profileHit.neighborhood);
-        }
     }
 
     /**
