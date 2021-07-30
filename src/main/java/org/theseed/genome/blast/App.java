@@ -22,6 +22,7 @@ import org.theseed.utils.BaseProcessor;
  * poi			add points of interest to a genome
  * splice		merge DNA into a reference sequence
  * fastq		hack a pair of FASTQ files into a FASTA file
+ * uniProfile	use profiles to verify universal roles
  */
 public class App
 {
@@ -62,6 +63,9 @@ public class App
             break;
         case "fastq" :
             processor = new FastQProcessor();
+            break;
+        case "uniProfile" :
+            processor = new UniProfileProcessor();
             break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);

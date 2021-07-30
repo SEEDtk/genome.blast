@@ -51,6 +51,11 @@
         <version>${slf4jVersion}</version>
     </dependency>
     <dependency>
+        <groupId>org.theseed</groupId>
+        <artifactId>p3api</artifactId>
+        <version>0.0.1</version>
+    </dependency>
+    <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback.version}</version>

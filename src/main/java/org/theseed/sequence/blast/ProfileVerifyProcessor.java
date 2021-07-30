@@ -46,13 +46,11 @@ import org.theseed.utils.ParseFailureException;
  * -d		working directory for storing created files; the default is the current directory
  * -t		number of threads to use; the default is 1
  *
- * --gc				genetic code for type "dna" sequence files; the default is 11
  * --maxE			maximum permissible e-value; the default is 1e-10
  * --minIdent		minimum percent identity for hits; the default is 0
  * --minQIdent		minimum query identity fraction for hits; the default is 0.50
  * --minQbsc		minimum query-scaled bit score for hits; the default is 0.0
  * --minQuery		minimum percent query match; the default is 0.0
- * --all			include both good and bad hits in the output
  * --roleFilter		if specified, a file containing roles to use in its first column (tab-delimited with headers); use this
  * 					to restrict processing to a subset of the profile roles
  * --outFormat		output format (default LIST)
