@@ -30,6 +30,7 @@ import org.theseed.proteins.RoleMap;
 import org.theseed.reports.UniProfileReporter;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
+import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
 import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.ProteinBlastDB;
@@ -134,7 +135,7 @@ public class UniProfileProcessor extends BaseProcessor {
         this.minPctIdentity = 0.50;
         this.minQbsc = 0.0;
         this.minQIdent = 0.0;
-        this.minPctQuery = 50.0;
+        this.minPctQuery = 0.0;
         this.clearFlag = false;
     }
 
@@ -180,7 +181,7 @@ public class UniProfileProcessor extends BaseProcessor {
         }
         // Finally, load the profiles.
         log.info("Loading protein profiles from {}.", this.profileDir);
-        this.profiles = new ProteinProfiles(this.inDir, sourRoles);
+        this.profiles = new ProteinProfiles(this.profileDir, sourRoles);
         this.roleMap = this.profiles.roleMap();
         return true;
     }
@@ -193,14 +194,20 @@ public class UniProfileProcessor extends BaseProcessor {
             // Initialize the reports.
             log.info("Initializing reports.");
             this.reporters.stream().forEach(x -> x.openReport(this.roleMap));
+            // Turn off BLAST logging.
+            BlastDB.setQuiet();
             // Create the BLAST parameters.
             BlastParms parms = new BlastParms().maxE(this.eValue).minPercent(this.minPctIdentity)
                     .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent).pctLenOfQuery(this.minPctQuery);
             // This set will track the roles found in each genome.
             Set<String> foundRoles = new HashSet<String>(this.roleMap.size());
             // Loop through the genomes.
+            int gCount = 0;
+            int gTotal = this.genomes.size();
+            long start = System.currentTimeMillis();
             for (Genome genome : this.genomes) {
-                log.info("Processing genome {}.", genome);
+                gCount++;
+                log.info("Processing genome {} of {}: {}.", gCount, gTotal, genome);
                 this.reporters.stream().forEach(x -> x.openGenome(genome));
                 // We want to loop through the genome, finding roles in pegs.
                 // We will keep a set of the roles found in here.
@@ -223,7 +230,7 @@ public class UniProfileProcessor extends BaseProcessor {
                     }
                 }
                 // Get a list of the missing roles.
-                Set<String> missingRoles = this.roleMap.keySet().stream().filter(x -> foundRoles.contains(x)).collect(Collectors.toSet());
+                Set<String> missingRoles = this.roleMap.keySet().stream().filter(x -> ! foundRoles.contains(x)).collect(Collectors.toSet());
                 if (missingRoles.isEmpty())
                     log.info("NO MISSING ROLES FOUND.");
                 else {
@@ -240,6 +247,10 @@ public class UniProfileProcessor extends BaseProcessor {
                 }
                 // Allow the reports to finish processing this genome.
                 this.reporters.stream().forEach(x -> x.closeGenome());
+                if (log.isInfoEnabled()) {
+                    double seconds = (System.currentTimeMillis() - start) / (1000.0 * gCount);
+                    log.info("{} genomes remaining, {} seconds / genome.", gTotal - gCount, seconds);
+                }
             }
             // Finish up the reports.
             this.reporters.stream().forEach(x -> x.closeReport());

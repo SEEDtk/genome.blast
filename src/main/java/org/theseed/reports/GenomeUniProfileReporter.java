@@ -75,7 +75,8 @@ public class GenomeUniProfileReporter extends UniProfileReporter {
             String roleName = this.getRoleName(role);
             int annotated = this.annotationMap.get(role).size();
             int profiled = this.profileMap.get(role).size();
-            this.print("%s\t%s\t%s\t%s\t%d\t%d\t%d", genomeId, genomeName, role, roleName, annotated, profiled, annotated + profiled);
+            if (annotated != 1 || profiled > 1)
+                this.print("%s\t%s\t%s\t%s\t%d\t%d\t%d", genomeId, genomeName, role, roleName, annotated, profiled, annotated + profiled);
         }
     }
 

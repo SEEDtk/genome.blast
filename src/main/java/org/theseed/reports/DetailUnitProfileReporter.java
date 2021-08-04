@@ -38,7 +38,7 @@ public class DetailUnitProfileReporter extends UniProfileReporter {
 
     @Override
     public void recordProfileHit(String role, BlastHit hit) {
-        this.print("%s\t%s\t%s\t%2.6e\t%8.2f\t%8.4f\t%s\t%s", this.getGenomeId(), role, this.getRoleName(role), hit.getQueryId(),
+        this.print("%s\t%s\t%s\t%s\t%2.6e\t%8.2f\t%8.4f\t%s\t%s", this.getGenomeId(), role, this.getRoleName(role), hit.getQueryId(),
                 hit.getEvalue(), hit.getBitScore(), hit.getSubjectPercentMatch(), hit.getSubjectId(), hit.getSubjectDef());
     }
 

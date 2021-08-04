@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.SortedSet;
 
 import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
@@ -86,6 +87,12 @@ public class RoleUniProfileReporter extends UniProfileReporter {
 
     @Override
     protected void finishReport() {
+        // Spool out the role counts.
+        SortedSet<String> roles = this.getRoles();
+        for (String role : roles) {
+            this.print("%s\t%s\t%d\t%d\t%d\t%d", role, this.getRoleName(role), this.goodCounts.getCount(role),
+                    this.multiCounts.getCount(role), this.profiledCounts.getCount(role), this.missingCounts.getCount(role));
+        }
     }
 
 }
