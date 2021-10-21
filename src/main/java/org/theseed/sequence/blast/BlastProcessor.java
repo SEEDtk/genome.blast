@@ -190,7 +190,7 @@ public class BlastProcessor extends BaseProcessor {
             log.info("Connecting to subject database of type {} in {}.", this.subjectType, this.subjectFile);
             this.subject = this.subjectType.subject(this.workDir, this.subjectFile, this.geneticCode, keepDB);
         } catch (InterruptedException e) {
-            throw new RuntimeException("Error creating subject database: " + e.getMessage());
+            throw new RuntimeException("Error creating subject database: " + e.toString());
         }
         // Create the reporting object.
         this.reporter = this.format.create(System.out, this.sortType);

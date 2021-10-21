@@ -63,7 +63,7 @@ public class MatchVerifyReporter extends MatchReporter {
         try {
             this.idFactory = new MD5Hex();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error initializing MD5 engine: " + e.getMessage());
+            throw new RuntimeException("Error initializing MD5 engine: " + e.toString());
         }
     }
 

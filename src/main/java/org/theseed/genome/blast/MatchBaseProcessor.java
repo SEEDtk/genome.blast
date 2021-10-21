@@ -245,7 +245,7 @@ public abstract class MatchBaseProcessor extends BaseProcessor {
                 this.rnaDB = DnaBlastDB.create(rnaFile, this.getGenome().getGeneticCode());
                 this.rnaDB.cleanOnExit();
             } catch (InterruptedException e) {
-                throw new IOException("Interruption during BLAST DB creation: " + e.getMessage());
+                throw new IOException("Interruption during BLAST DB creation: " + e.toString());
             }
         // Clear the protein index number.
         this.protIdx = 0;
