@@ -24,7 +24,7 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/ch/qos/logback/logback-classic/1.2.10/logback-classic-1.2.10.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/ch/qos/logback/logback-core/1.2.10/logback-core-1.2.10.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-text/1.8/commons-text-1.8.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-text/1.10.0/commons-text-1.10.0.jar"/>
             <fileset dir="${dir.workspace}/git/sequence/target/classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/commons-io/commons-io/2.8.0/commons-io-2.8.0.jar"/>
         </jar>
