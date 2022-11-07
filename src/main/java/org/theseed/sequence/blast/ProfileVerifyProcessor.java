@@ -227,8 +227,8 @@ public class ProfileVerifyProcessor extends BaseProcessor {
                 // be removed.
                 Set<String> missedFeatures = new HashSet<String>(contigFeatures.size());
                 for (Feature feat : contigFeatures) {
-                    List<Role> useful = feat.getUsefulRoles(this.profiler.roleMap());
-                    if (useful.size() > 0)
+                    boolean useful = feat.isInteresting(this.profiler.roleMap());
+                    if (useful)
                         missedFeatures.add(feat.getId());
                 }
                 this.goodCount += missedFeatures.size();
