@@ -11,7 +11,7 @@ import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.io.Shuffler;
+import org.theseed.counters.Shuffler;
 import org.theseed.locations.Location;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.BlastHit;
