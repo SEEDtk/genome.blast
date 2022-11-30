@@ -24,6 +24,7 @@ import org.theseed.utils.BaseProcessor;
  * fastq		hack a pair of FASTQ files into a FASTA file
  * uniProfile	use profiles to verify universal roles
  * proteins		compute pairwise distances between proteins in FASTA files
+ * protPrep		package a genome source into protein FASTA files
  */
 public class App
 {
@@ -69,9 +70,11 @@ public class App
             processor = new UniProfileProcessor();
             break;
         case "proteins" :
-            processor = new ProteinDistanceProcessor();
+            processor = new ProteinSimsProcessor();
             break;
-
+        case "protPrep" :
+            processor = new ProteinSimsPrepareProcessor();
+            break;
         default :
             throw new IllegalArgumentException("Invalid command " + command);
         }

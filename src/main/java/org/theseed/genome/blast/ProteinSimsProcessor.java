@@ -37,11 +37,11 @@ import org.theseed.utils.StringPair;
  * @author Bruce Parrello
  *
  */
-public class ProteinDistanceProcessor extends BaseReportProcessor implements ProteinCompare.IParms {
+public class ProteinSimsProcessor extends BaseReportProcessor implements ProteinCompare.IParms {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(ProteinDistanceProcessor.class);
+    protected static Logger log = LoggerFactory.getLogger(ProteinSimsProcessor.class);
     /** comparison method engine */
     private ProteinCompare method;
     /** list of input FASTA files */
@@ -77,7 +77,7 @@ public class ProteinDistanceProcessor extends BaseReportProcessor implements Pro
     @Override
     protected void setReporterDefaults() {
         this.kmerSize = 8;
-        this.methodType = ProteinCompare.Type.KMERS;
+        this.methodType = ProteinCompare.Type.BLAST;
     }
 
     @Override
