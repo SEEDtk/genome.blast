@@ -23,6 +23,7 @@ import org.theseed.utils.BaseProcessor;
  * splice		merge DNA into a reference sequence
  * fastq		hack a pair of FASTQ files into a FASTA file
  * uniProfile	use profiles to verify universal roles
+ * proteins		compute pairwise distances between proteins in FASTA files
  */
 public class App
 {
@@ -67,6 +68,10 @@ public class App
         case "uniProfile" :
             processor = new UniProfileProcessor();
             break;
+        case "proteins" :
+            processor = new ProteinDistanceProcessor();
+            break;
+
         default :
             throw new IllegalArgumentException("Invalid command " + command);
         }

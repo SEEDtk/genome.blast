@@ -10,7 +10,7 @@ import org.theseed.utils.StringPair;
 
 /**
  * This is a base class for protein comparisons.  The client presents two protein FASTA files, and
- * we come up with a distance for each pair between the left and right.  The results are returned
+ * we come up with a similarity for each pair between the left and right.  The results are returned
  * in a list.
  *
  * @author Bruce Parrello
@@ -50,8 +50,7 @@ public abstract class ProteinCompare {
         BLAST {
             @Override
             public ProteinCompare create(IParms processor) {
-                // TODO Auto-generated method stub
-                return null;
+                return new BlastProteinCompare(processor);
             }
         };
 
@@ -67,7 +66,7 @@ public abstract class ProteinCompare {
     }
 
     /**
-     * Compute the distances between proteins in two FASTA files.
+     * Compute the similarities between proteins in two FASTA files.
      *
      * @param file1		first file to compare
      * @param file2		second file to compare
@@ -76,21 +75,21 @@ public abstract class ProteinCompare {
      *
      * @throws IOException
      */
-    public Map<StringPair, Double> computeDistance(File file1, File file2) throws IOException {
+    public Map<StringPair, Double> computeSim(File file1, File file2) throws IOException {
         log.info("Comparing proteins in {} with {}.", file1, file2);
-        return this.computeDistanceInternal(file1, file2);
+        return this.computeSimInternal(file1, file2);
     }
 
     /**
-     * Compute the distances for all the protein pairs in the two specified sets.
+     * Compute the similarities for all the protein pairs in the two specified sets.
      *
      * @param file1		first file to compare
      * @param file2		second file to compare
      *
-     * @return a map from ID pairs to distances
+     * @return a map from ID pairs to non-trivial similarities
      *
      * @throws IOException
      */
-    protected abstract Map<StringPair, Double> computeDistanceInternal(File file1, File file2) throws IOException;
+    protected abstract Map<StringPair, Double> computeSimInternal(File file1, File file2) throws IOException;
 
 }

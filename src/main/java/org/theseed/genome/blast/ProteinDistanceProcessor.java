@@ -98,7 +98,7 @@ public class ProteinDistanceProcessor extends BaseReportProcessor implements Pro
     @Override
     protected void runReporter(PrintWriter writer) throws Exception {
         // Prepare the output file.
-        writer.println("prot1\tprot2\tdistance");
+        writer.println("prot1\tprot2\tsimilarity");
         // Loop through the file pairs.
         for (int i = 0; i < this.inFiles.length; i++) {
             File file1 = this.inFiles[i];
@@ -117,14 +117,13 @@ public class ProteinDistanceProcessor extends BaseReportProcessor implements Pro
      */
     private void runCompare(File file1, File file2, PrintWriter writer) {
         try {
-            Map<StringPair, Double> distances = this.method.computeDistance(file1, file2);
+            Map<StringPair, Double> sims = this.method.computeSim(file1, file2);
             synchronized (writer) {
-                log.info("{} pairs returned from {} and {}.", distances.size(), file1, file2);
-                for (var mapEntry : distances.entrySet()) {
+                log.info("{} pairs returned from {} and {}.", sims.size(), file1, file2);
+                for (var mapEntry : sims.entrySet()) {
                     StringPair pair = mapEntry.getKey();
-                    double dist = mapEntry.getValue();
-                    if (dist < 1.0)
-                        writer.println(pair.getString1() + "\t" + pair.getString2() + "\t" + Double.toString(dist));
+                    double sim = mapEntry.getValue();
+                    writer.println(pair.getString1() + "\t" + pair.getString2() + "\t" + Double.toString(sim));
                 }
             }
         } catch (IOException e) {

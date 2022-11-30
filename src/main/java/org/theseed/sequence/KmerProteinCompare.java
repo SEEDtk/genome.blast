@@ -30,7 +30,7 @@ public class KmerProteinCompare extends ProteinCompare {
     }
 
     @Override
-    protected Map<StringPair, Double> computeDistanceInternal(File file1, File file2) throws IOException {
+    protected Map<StringPair, Double> computeSimInternal(File file1, File file2) throws IOException {
         // Read in the first set of proteins.
         List<Sequence> prots1 = FastaInputStream.readAll(file1);
         log.info("{} sequences read from {}.", prots1.size(), file1);
@@ -66,16 +66,31 @@ public class KmerProteinCompare extends ProteinCompare {
                 // Only proceed if we haven't done this comparison yet.
                 if (! id1.equals(id2) && ! retVal.containsKey(pair)) {
                     ProteinKmers kmers2 = entry2.getValue();
-                    double dist = kmers1.distance(kmers2);
-                    retVal.put(pair, dist);
+                    int sim = kmers1.similarity(kmers2);
+                    double simScore;
+                    if (sim == SequenceKmers.INFINITY)
+                        simScore = 1.0;
+                    else
+                        simScore = ((double) sim) / (kmers1.size() + kmers2.size() - sim);
+                    retVal.put(pair, simScore);
                     count++;
                 }
-                if (log.isInfoEnabled() && count % 10000 == 0  && count > 0) {
+                if (log.isInfoEnabled() && count % 50000 == 0  && count > 0) {
                     Duration d = Duration.ofMillis(System.currentTimeMillis() - start);
                     log.info("{} pairs processed out of {} for {} and {} in {}.", count, numCompares, file1, file2, d);
                 }
             }
         }
+        var iter = retVal.entrySet().iterator();
+        count = 0;
+        while (iter.hasNext()) {
+            var entry = iter.next();
+            if (entry.getValue() <= 0.0) {
+                iter.remove();
+                count++;
+            }
+        }
+        log.info("{} trivial pairs removed.", count);
         return retVal;
     }
 
