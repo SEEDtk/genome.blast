@@ -103,7 +103,7 @@ public class ProteinSimsProcessor extends BaseReportProcessor implements Protein
         for (int i = 0; i < this.inFiles.length; i++) {
             File file1 = this.inFiles[i];
             log.info("Processing file {} of {}: {}.",  i+1, this.inFiles.length, file1);
-            IntStream.range(i, this.inFiles.length).parallel()
+            IntStream.range(i, this.inFiles.length)
                     .forEach(j -> this.runCompare(file1, this.inFiles[j], writer));
         }
     }
