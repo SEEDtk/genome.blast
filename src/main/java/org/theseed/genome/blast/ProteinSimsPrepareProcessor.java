@@ -14,14 +14,14 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
 import org.theseed.p3api.P3Genome;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command will prepare the genomes from a genome source so that they can be processed by

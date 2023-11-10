@@ -10,10 +10,10 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.reports.BlastReporter;
 import org.theseed.sequence.SequenceInputStream;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command performs a BLAST between two files.  Each file can be a full BLAST database, a FASTA file,

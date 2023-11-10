@@ -9,10 +9,10 @@ import java.io.IOException;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.io.GtoFilter;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.blast.BlastDB;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This method runs the MatchProcessor against all rna/genome pairs in a directory.  It has

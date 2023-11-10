@@ -23,11 +23,11 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
 import org.theseed.genome.Feature;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
-import org.theseed.utils.BaseProcessor;
 
 /**
  * This command builds a new profile directory from a role map and raw profiles.  The profile directory

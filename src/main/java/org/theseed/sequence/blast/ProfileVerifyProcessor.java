@@ -19,6 +19,8 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
@@ -28,8 +30,6 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
 import org.theseed.reports.ProfileVerifyReporter;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command verifies a profile against a genome.  The profile will be applied to the genome's contigs.

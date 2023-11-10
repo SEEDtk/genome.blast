@@ -13,11 +13,11 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.AnalysisList;
-import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.FloatList;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command reads a tab-delimited file into memory with multiple named numeric columns and a single column that says "good" or "bad".

@@ -17,13 +17,13 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.io.LineReader;
 import org.theseed.sequence.DnaKmers;
 import org.theseed.sequence.FastaInputStream;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a simple command that converts one or more FASTQ files to a single FASTA file.  This is a crude process that simply outputs

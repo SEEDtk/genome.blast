@@ -12,9 +12,9 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.kohsuke.args4j.Argument;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.reports.MatchReporter;
 import org.theseed.sequence.blast.BlastDB;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is designed to find ground-truth proteins from RNA sequences that correspond to a known genome.

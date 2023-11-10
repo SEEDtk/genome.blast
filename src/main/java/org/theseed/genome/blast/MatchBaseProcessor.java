@@ -17,6 +17,8 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Genome;
 import org.theseed.locations.BLocation;
@@ -33,8 +35,6 @@ import org.theseed.sequence.blast.BlastParms;
 import org.theseed.sequence.blast.DnaBlastDB;
 import org.theseed.sequence.blast.ProteinHit;
 import org.theseed.sequence.blast.ProteinProfiles;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a base class that runs a single genome against a single RNA sequence file.  It is used by

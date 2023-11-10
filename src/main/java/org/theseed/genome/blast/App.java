@@ -2,11 +2,11 @@ package org.theseed.genome.blast;
 
 import java.util.Arrays;
 
+import org.theseed.basic.BaseProcessor;
 import org.theseed.sequence.blast.BlastProcessor;
 import org.theseed.sequence.blast.ProfileMakeProcessor;
 import org.theseed.sequence.blast.ProfileProcessor;
 import org.theseed.sequence.blast.ProfileVerifyProcessor;
-import org.theseed.utils.BaseProcessor;
 
 /**
  * These are various commands related to genome BLAST and matching.
