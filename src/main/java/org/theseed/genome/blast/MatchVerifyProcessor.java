@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.basic.BaseProcessor;
 import org.theseed.counters.CountMap;
-import org.theseed.counters.EnumCounter;
 import org.theseed.genome.Genome;
 import org.theseed.io.GtoFilter;
 import org.theseed.reports.MatchReporter;
@@ -26,6 +25,7 @@ import org.theseed.sequence.Sequence;
 import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.GtiFile;
 import org.theseed.sequence.blast.GtiFile.Record;
+import org.theseed.stats.EnumCounter;
 
 import java.io.OutputStream;
 

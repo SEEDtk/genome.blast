@@ -15,13 +15,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.similarity.LevenshteinDetailedDistance;
 import org.apache.commons.text.similarity.LevenshteinResults;
 import org.theseed.counters.CountMap;
-import org.theseed.counters.EnumCounter;
 import org.theseed.genome.Feature;
 import org.theseed.genome.FeatureList;
 import org.theseed.genome.Genome;
 import org.theseed.locations.Location;
 import org.theseed.sequence.MD5Hex;
 import org.theseed.sequence.ProteinKmers;
+import org.theseed.stats.EnumCounter;
 
 /**
  * This report displays each protein sequence found and compares it to the closest known protein in the

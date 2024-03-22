@@ -12,9 +12,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import org.theseed.counters.Shuffler;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.AnalysisList;
+import org.theseed.stats.Shuffler;
 
 /**
  * Unit test for simple App.
