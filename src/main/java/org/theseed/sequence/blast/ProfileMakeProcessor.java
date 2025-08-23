@@ -93,7 +93,7 @@ public class ProfileMakeProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected void validateParms() throws IOException {
         // Read in the role map.
         if (! this.roleFile.canRead())
             throw new FileNotFoundException("Role input file " + this.roleFile + " not found or invalid.");
@@ -115,7 +115,6 @@ public class ProfileMakeProcessor extends BaseProcessor {
         this.mapOutput = new PrintWriter(new File(this.outDir, "_map.tbl"));
         // Create the processed-roles set.
         this.rolesOut = new RoleMap();
-        return true;
     }
 
     @Override
@@ -167,7 +166,7 @@ public class ProfileMakeProcessor extends BaseProcessor {
                     int total = plurality;
                     // Parse the function for a good role.
                     List<Role> roles = Feature.usefulRoles(this.roleMap, function);
-                    if (roles.size() > 0 && plurality >= this.minPlurality) {
+                    if (! roles.isEmpty() && plurality >= this.minPlurality) {
                         // Here the plurality function contains useful roles.  Compute the total count.
                         while (lineIter.hasNext())
                             total += lineIter.next().getInt(0);

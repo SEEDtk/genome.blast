@@ -3,7 +3,6 @@
  */
 package org.theseed.reports;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -22,13 +21,13 @@ import org.theseed.sequence.blast.BlastHit;
  * @author Bruce Parrello
  *
  */
-public abstract class MatchOutputStream implements AutoCloseable, Closeable {
+public abstract class MatchOutputStream implements AutoCloseable {
 
     // FIELDS
     /** genome of interest */
-    private Genome genome;
+    private final Genome genome;
     /** ID of current sample */
-    private String sampleId;
+    private final String sampleId;
 
     /**
      * Type of output stream.
@@ -41,15 +40,13 @@ public abstract class MatchOutputStream implements AutoCloseable, Closeable {
          * @throws IOException
          */
         public MatchOutputStream create(File outputFile, Genome genome, String sampleId) throws IOException {
-            MatchOutputStream retVal = null;
+            MatchOutputStream retVal;
             switch (this) {
-            case GTI:
-                retVal = new GtiMatchOutputStream(outputFile, genome, sampleId);
-                break;
-            case FASTA:
-                retVal = new FastaMatchOutputStream(outputFile, genome, sampleId);
-                break;
+            case GTI -> retVal = new GtiMatchOutputStream(outputFile, genome, sampleId);
+            case FASTA -> retVal = new FastaMatchOutputStream(outputFile, genome, sampleId);
+            default -> throw new IOException("Unknown output stream type: " + this);
             }
+            retVal.initialize();
             return retVal;
         }
     }
@@ -66,7 +63,6 @@ public abstract class MatchOutputStream implements AutoCloseable, Closeable {
     public MatchOutputStream(File outFile, Genome genome, String sampleId) throws IOException {
         this.genome = genome;
         this.sampleId = sampleId;
-        this.initialize();
     }
 
     /**

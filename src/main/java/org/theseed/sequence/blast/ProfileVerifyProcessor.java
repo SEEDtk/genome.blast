@@ -74,7 +74,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
     /** temporary file for blast databases */
     private File blastFile;
     /** empty list of blast hits */
-    private static final List<BlastHit> NO_HITS = new ArrayList<BlastHit>();
+    private static final List<BlastHit> NO_HITS = new ArrayList<>();
     /** list of genome files to process */
     private List<File> genomeFiles;
     /** output report processor */
@@ -113,10 +113,6 @@ public class ProfileVerifyProcessor extends BaseProcessor {
             usage  = "minimum percent of query sequence that must be hit")
     private double minPctQuery;
 
-    /** include both good and bad hits in the output */
-    @Option(name = "--all", usage = "include good hits as well as bad hits in the output")
-    private boolean showAll;
-
     /** filtering file to restrict roles used */
     @Option(name = "--roleFilter", metaVar = "sours.tbl", usage = "file containing roles to use")
     private File roleFilter;
@@ -141,13 +137,12 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         this.minQbsc = 0.0;
         this.minQIdent = 0.5;
         this.numThreads = 1;
-        this.showAll = false;
         this.roleFilter = null;
         this.reportType = ProfileVerifyReporter.Type.LIST;
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -182,7 +177,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
         // Create the report writer.
         this.reporter = this.reportType.create(System.out);
         // Now we must convert the incoming directories to file lists.
-        this.genomeFiles = new ArrayList<File>(this.sourceFiles.size() * 10);
+        this.genomeFiles = new ArrayList<>(this.sourceFiles.size() * 10);
         for (File gFile : this.sourceFiles) {
             if (gFile.isDirectory()) {
                 File[] gFiles = GtoFilter.getAll(gFile);
@@ -192,7 +187,6 @@ public class ProfileVerifyProcessor extends BaseProcessor {
             else
                 this.genomeFiles.add(gFile);
         }
-        return true;
     }
 
     @Override
@@ -225,7 +219,7 @@ public class ProfileVerifyProcessor extends BaseProcessor {
                 FeatureList contigFeatures = genome.getContigFeatures(contigId);
                 // Fill the missing-set with all the features that have useful roles.  Any features that were hit will
                 // be removed.
-                Set<String> missedFeatures = new HashSet<String>(contigFeatures.size());
+                Set<String> missedFeatures = new HashSet<>(contigFeatures.size());
                 for (Feature feat : contigFeatures) {
                     boolean useful = feat.isInteresting(this.profiler.roleMap());
                     if (useful)

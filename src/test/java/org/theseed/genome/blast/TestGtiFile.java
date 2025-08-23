@@ -8,12 +8,13 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 import org.theseed.locations.Location;
 import org.theseed.sequence.blast.GtiFile;
 
 import junit.framework.TestCase;
-import static org.hamcrest.Matchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * Test the GTI file.
@@ -29,7 +30,7 @@ public class TestGtiFile extends TestCase {
      * @throws IOException
      */
     public void testFile() throws IOException {
-        File inFile = new File("src/test", "test.gti");
+        File inFile = new File("data", "test.gti");
         try (GtiFile inStream = new GtiFile(inFile)) {
             Iterator<GtiFile.Record> iter = inStream.iterator();
             GtiFile.Record record = iter.next();

@@ -86,7 +86,7 @@ public class ProteinSimsPrepareProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify the batch size.
         if (this.batchSize < 1)
             throw new ParseFailureException("Batch size must be at least 1 (but >= 1000 is better).");
@@ -106,10 +106,9 @@ public class ProteinSimsPrepareProcessor extends BaseProcessor {
         this.genomes = this.inType.create(this.inDir);
         this.genomes.setDetailLevel(P3Genome.Details.PROTEINS);
         // Create the protein set.  This prevents us from writing redundant proteins.
-        this.prots = new HashSet<String>(5500 * this.genomes.size());
+        this.prots = new HashSet<>(5500 * this.genomes.size());
         // Denote no files have been output.
         this.fileIdx = 0;
-        return true;
     }
 
     @Override

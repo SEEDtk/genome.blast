@@ -83,11 +83,11 @@ public class MatchProcessor extends MatchBaseProcessor {
     @Override
     protected void setDefaults() {
         this.setupDefaults();
-        this.sampleMap = new TreeMap<String, SampleFiles>();
+        this.sampleMap = new TreeMap<>();
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         validateCommonParms(MatchReporter.Type.SUMMARY, System.out);
         // Verify all the input samples.
         for (String sample : samples) {
@@ -98,7 +98,6 @@ public class MatchProcessor extends MatchBaseProcessor {
                 throw new FileNotFoundException("RNA file " + files.rnaFile + " not found or unreadable.");
             this.sampleMap.put(sample, files);
         }
-        return true;
     }
 
     @Override

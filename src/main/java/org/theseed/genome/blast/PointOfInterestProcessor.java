@@ -132,7 +132,7 @@ public class PointOfInterestProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the feature type is only letters and digits.
         if (! StringUtils.isAlpha(this.featureType))
             throw new ParseFailureException("Feature type must contain only letters.");
@@ -161,7 +161,6 @@ public class PointOfInterestProcessor extends BaseProcessor {
         } else {
             log.info("Output will be to directory {}.", this.outDir);
         }
-        return true;
     }
 
     @Override
@@ -171,10 +170,10 @@ public class PointOfInterestProcessor extends BaseProcessor {
         int genomeCount = 0;
         int skipCount = 0;
         // Create the contig hash map and the new-feature set.  They will be cleared and re-used for each genome.
-        this.contigMaps = new HashMap<String, FeatureList>(100);
-        this.newFeats = new TreeSet<Feature>(new Feature.StrandComparator());
+        this.contigMaps = new HashMap<>(100);
+        this.newFeats = new TreeSet<>(new Feature.StrandComparator());
         // Create the family-length map.
-        this.familyLengths = new HashMap<String, Integer>(1000);
+        this.familyLengths = new HashMap<>(1000);
         // Create the blast database from the reference sequences.  Note that the genetic code does not matter here,
         // since we are looking at RNA.
         log.info("Connecting to BLAST database from reference sequences in {}.", this.seqFile);
@@ -253,7 +252,7 @@ public class PointOfInterestProcessor extends BaseProcessor {
      * @param genome	genome whose features are to be deleted
      */
     private void clearGenome(Genome genome) {
-        Collection<Feature> deletes = new ArrayList<Feature>(1000);
+        Collection<Feature> deletes = new ArrayList<>(1000);
         log.info("Deleting {} features from {}.", this.featureType, genome);
         String prefix = "fig|" + genome.getId() + "." + this.featureType;
         for (Feature feat : genome.getFeatures()) {

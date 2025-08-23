@@ -5,6 +5,7 @@ package org.theseed.sequence.blast;
 
 import java.io.File;
 import java.io.IOException;
+
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -47,7 +48,6 @@ import org.theseed.sequence.SequenceInputStream;
  * --format		output format; the default is HTML
  * --sort		sort order of output (QUERY or SUBJECT); the default is QUERY
  * --keep		if specified, the BLAST database will be kept (ignored if database type is "db")
- * --color		color computation scheme for HTML reports; the default is "sim"
  * --minIdent	minimum percent identity for hits; the default is 0
  *
  * @author Bruce Parrello
@@ -120,10 +120,6 @@ public class BlastProcessor extends BaseProcessor {
     @Option(name = "--keep", usage = "keep BLAST database if one is created")
     private boolean keepDB;
 
-    /** color computation scheme for HTML reports */
-    @Option(name = "--color", usage = "color computation scheme for hits")
-    private BlastDB.ColorType colorType;
-
     /** type of query file */
     @Argument(index = 0, usage = "type of query input file", required = true)
     private Source queryType;
@@ -154,12 +150,11 @@ public class BlastProcessor extends BaseProcessor {
         this.minPctIdentity = 0.0;
         this.numThreads = 1;
         this.sortType = BlastDB.SortType.QUERY;
-        this.colorType = BlastDB.ColorType.ident;
         this.batchSize = 20;
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -195,7 +190,6 @@ public class BlastProcessor extends BaseProcessor {
         // Create the reporting object.
         this.reporter = this.format.create(System.out, this.sortType);
         log.info("Report format is {} sorted by {}.", this.format, this.sortType);
-        return true;
     }
 
     @Override

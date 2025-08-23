@@ -24,7 +24,7 @@ public class GtiMatchOutputStream extends MatchOutputStream {
 
     // FIELDS
     /** output writer */
-    private PrintWriter writer;
+    private final PrintWriter writer;
 
     /**
      * Construct a GTI output stream.

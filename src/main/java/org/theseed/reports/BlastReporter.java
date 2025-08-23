@@ -3,7 +3,6 @@
  */
 package org.theseed.reports;
 
-import java.io.Closeable;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.SortedMap;
@@ -23,7 +22,7 @@ import org.theseed.stats.Shuffler;
  * @author Bruce Parrello
  *
  */
-public abstract class BlastReporter extends BaseReporter implements Closeable, AutoCloseable, IBlastReporter {
+public abstract class BlastReporter extends BaseReporter implements IBlastReporter {
 
     /**
      * This enum indicates the type of BLAST report.
@@ -40,15 +39,9 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
         public BlastReporter create(OutputStream stream, BlastDB.SortType type) {
             BlastReporter retVal = null;
             switch (this) {
-            case TABLE:
-                retVal = new BlastTableReporter(stream, type);
-                break;
-            case HTML:
-                retVal = new BlastHtmlReporter(stream, type);
-                break;
-            case ALIGN:
-                retVal = new BlastAlignReporter(stream, type);
-                break;
+            case TABLE -> retVal = new BlastTableReporter(stream, type);
+            case HTML -> retVal = new BlastHtmlReporter(stream, type);
+            case ALIGN -> retVal = new BlastAlignReporter(stream, type);
             }
             return retVal;
         }
@@ -58,9 +51,9 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
     /** message log */
     protected Logger log = LoggerFactory.getLogger(BlastReporter.class);
     /** target sort type (QUERY or SUBJECT) */
-    private BlastDB.SortType sortType;
+    private final BlastDB.SortType sortType;
     /** map of sort sequences to hits */
-    private SortedMap<String, List<BlastHit>> hitMap;
+    private final SortedMap<String, List<BlastHit>> hitMap;
     /** rejection count */
     private int rejected;
 
@@ -73,7 +66,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
     public BlastReporter(OutputStream output, BlastDB.SortType sort) {
         super(output);
         this.sortType = sort;
-        this.hitMap = new TreeMap<String, List<BlastHit>>(new NaturalSort());
+        this.hitMap = new TreeMap<>(new NaturalSort());
         this.rejected = 0;
 
     }
@@ -83,6 +76,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      *
      * @param hit	BLAST hit to record
      */
+    @Override
     public void recordHit(BlastHit hit) {
         String id = this.sortType.idOf(hit);
         List<BlastHit> hitList = hitMap.get(id);
@@ -126,6 +120,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
      * @param title		title to put on report
      * @param runInfo 	statistics on the run
      */
+    @Override
     public void writeReport(String title, BlastInfo runInfo) {
         this.openReport(title);
         this.showSubtitle(runInfo);
@@ -195,6 +190,7 @@ public abstract class BlastReporter extends BaseReporter implements Closeable, A
     /**
      * @return the number of sort sequences hit
      */
+    @Override
     public int getSequencesHit() {
         return this.hitMap.size();
     }

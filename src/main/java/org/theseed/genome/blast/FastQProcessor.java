@@ -88,7 +88,7 @@ public class FastQProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         if (this.minQual < 0.0 || this.minQual > 40.0)
             throw new ParseFailureException("Minimum quality must be between 0.0 and 4.0 inclusive.");
         // Set up the sequence filter.
@@ -110,7 +110,6 @@ public class FastQProcessor extends BaseProcessor {
             if (! inFile.canRead())
                 throw new FileNotFoundException("Input file " + inFile + " is not found or unreadable.");
         }
-        return true;
     }
 
     @Override

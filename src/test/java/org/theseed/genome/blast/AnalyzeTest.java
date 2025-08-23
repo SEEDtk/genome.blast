@@ -1,20 +1,20 @@
 package org.theseed.genome.blast;
 
-import junit.framework.Test;
-
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.reports.AnalysisList;
 import org.theseed.stats.Shuffler;
+
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 /**
  * Unit test for simple App.
@@ -45,7 +45,7 @@ public class AnalyzeTest extends TestCase
      * @throws IOException
      */
     public void testAnalyzer() throws IOException {
-        File inFile = new File("src/test", "analysis.txt");
+        File inFile = new File("data", "analysis.txt");
         TabbedLineReader inStream = new TabbedLineReader(inFile);
         List<String> cols = new Shuffler<String>(2).add1("eval").add1("percent");
         AnalysisList aList = new AnalysisList(inStream, "type", cols, "good");

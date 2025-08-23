@@ -140,7 +140,7 @@ public class UniProfileProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify the output directory.
         if (! this.outDir.isDirectory()) {
             log.info("Creating output directory {}.", this.outDir);
@@ -174,7 +174,7 @@ public class UniProfileProcessor extends BaseProcessor {
         log.info("Loading genomes from {} source {}.", this.sourceType.toString(), this.inDir);
         this.genomes = this.sourceType.create(this.inDir);
         // Create the reporting objects.
-        this.reporters = new ArrayList<UniProfileReporter>(UniProfileReporter.Type.values().length);
+        this.reporters = new ArrayList<>(UniProfileReporter.Type.values().length);
         for (UniProfileReporter.Type reportType : UniProfileReporter.Type.values()) {
             UniProfileReporter reporter = reportType.create(this.outDir);
             this.reporters.add(reporter);
@@ -183,7 +183,6 @@ public class UniProfileProcessor extends BaseProcessor {
         log.info("Loading protein profiles from {}.", this.profileDir);
         this.profiles = new ProteinProfiles(this.profileDir, sourRoles);
         this.roleMap = this.profiles.roleMap();
-        return true;
     }
 
     @Override
@@ -200,7 +199,7 @@ public class UniProfileProcessor extends BaseProcessor {
             BlastParms parms = new BlastParms().maxE(this.eValue).minPercent(this.minPctIdentity)
                     .minQueryBitScore(this.minQbsc).minQueryIdentity(this.minQIdent).pctLenOfQuery(this.minPctQuery);
             // This set will track the roles found in each genome.
-            Set<String> foundRoles = new HashSet<String>(this.roleMap.size());
+            Set<String> foundRoles = new HashSet<>(this.roleMap.size());
             // Loop through the genomes.
             int gCount = 0;
             int gTotal = this.genomes.size();

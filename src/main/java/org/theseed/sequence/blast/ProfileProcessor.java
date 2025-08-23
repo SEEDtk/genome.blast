@@ -98,11 +98,6 @@ public class ProfileProcessor extends BaseProcessor {
             usage = "minimum percent identity for a hit")
     private double minPctIdentity;
 
-    /** minimum percent query coverage for a legitimate hit */
-    @Option(name = "--minQuery", aliases = { "--minQ" }, metaVar = "75",
-            usage  = "minimum percent of query sequence that must be hit")
-    private double minPctQuery;
-
     /** maximum number of results to return per query */
     @Option(name = "--max", aliases = { "--maxHSP", "--maxPerQuery" }, metaVar = "10",
             usage = "maximum number of hits to return for each query")
@@ -119,10 +114,6 @@ public class ProfileProcessor extends BaseProcessor {
     /** TRUE to keep created files for the BLAST database, else FALSE */
     @Option(name = "--keep", usage = "keep BLAST database if one is created")
     private boolean keepDB;
-
-    /** color computation scheme for HTML reports */
-    @Option(name = "--color", usage = "color computation scheme for hits")
-    private BlastDB.ColorType colorType;
 
     /** minimum query-scaled bit score */
     @Option(name = "--minQbsc", metaVar = "1.2", usage = "minimum acceptable query-scaled bit score")
@@ -154,17 +145,15 @@ public class ProfileProcessor extends BaseProcessor {
         this.keepDB = false;
         this.maxPerQuery = 100;
         this.minPctSubject = 0.0;
-        this.minPctQuery = 0.0;
         this.minPctIdentity = 0.0;
         this.minQbsc = 1.1;
         this.minQIdent = 0.0;
         this.numThreads = 1;
         this.sortType = BlastDB.SortType.SUBJECT;
-        this.colorType = BlastDB.ColorType.ident;
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the work directory exists.
         if (! this.workDir.isDirectory()) {
             log.info("Creating working file directory {}.", this.workDir);
@@ -199,7 +188,6 @@ public class ProfileProcessor extends BaseProcessor {
         // Create the reporting object.
         this.reporter = this.format.create(System.out, this.sortType);
         log.info("Report format is {} sorted by {}.", this.format, this.sortType);
-        return true;
     }
 
 

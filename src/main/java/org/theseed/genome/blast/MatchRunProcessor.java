@@ -6,6 +6,7 @@ package org.theseed.genome.blast;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -71,11 +72,10 @@ public class MatchRunProcessor extends MatchBaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.inDir + " not found or invalid.");
         this.validateCommonParms(MatchReporter.Type.SUMMARY, System.out);
-        return true;
     }
 
     @Override

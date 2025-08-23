@@ -23,7 +23,7 @@ public class FastaMatchOutputStream extends MatchOutputStream {
 
     // FIELDS
     /** stream for writing sequences in FASTA format */
-    private FastaOutputStream outStream;
+    private final FastaOutputStream outStream;
 
     /**
      * Construct a match output stream that produces a FASTA file.

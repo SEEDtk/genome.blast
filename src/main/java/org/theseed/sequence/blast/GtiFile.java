@@ -3,7 +3,6 @@
  */
 package org.theseed.sequence.blast;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -18,11 +17,11 @@ import org.theseed.locations.Location;
  * @author Bruce Parrello
  *
  */
-public class GtiFile implements Iterable<GtiFile.Record>, AutoCloseable, Closeable, Iterator<GtiFile.Record> {
+public class GtiFile implements Iterable<GtiFile.Record>, AutoCloseable, Iterator<GtiFile.Record> {
 
     // FIELDS
     /** input stream */
-    private TabbedLineReader inStream;
+    private final TabbedLineReader inStream;
 
     /**
      * This class describes a GTI record.
@@ -31,15 +30,15 @@ public class GtiFile implements Iterable<GtiFile.Record>, AutoCloseable, Closeab
 
         // FIELDS
         /** ID of the source sample */
-        private String sampleId;
+        private final String sampleId;
         /** ID of the RNA sequence fragment */
-        private String rnaId;
+        private final String rnaId;
         /** location of the DNA in the genome */
-        private Location dnaLoc;
+        private final Location dnaLoc;
         /** DNA string */
-        private String dna;
+        private final String dna;
         /** list of proteins */
-        private List<String> prots;
+        private final List<String> prots;
 
         /**
          * Construct a GTI record from an input line.

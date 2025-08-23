@@ -7,7 +7,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -26,8 +28,6 @@ import org.theseed.sequence.blast.BlastDB;
 import org.theseed.sequence.blast.GtiFile;
 import org.theseed.sequence.blast.GtiFile.Record;
 import org.theseed.stats.EnumCounter;
-
-import java.io.OutputStream;
 
 /**
  * This command runs through the directory produced by the "mrun" command and creates a verification report
@@ -108,11 +108,10 @@ public class MatchVerifyProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected void validateParms() throws IOException {
         // Verify the run directory.
         if (! this.runDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.runDir + " not found or invalid.");
-        return true;
     }
 
     @Override
@@ -122,7 +121,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
         // This will be the result summary file.
         File resultFile = new File(this.runDir, "results.txt");
         // Initialize the totals.
-        this.totals = new EnumCounter<ErrorType>(ErrorType.class);
+        this.totals = new EnumCounter<>(ErrorType.class);
         this.gtiTotal = 0;
         this.protTotal = 0;
         this.prokProtTotal = 0;
@@ -149,12 +148,8 @@ public class MatchVerifyProcessor extends BaseProcessor {
                 log.info("Genome is {}.", genome);
                 // Now produce the reports.
                 switch (genome.getDomain()) {
-                case "Archaea" :
-                case "Bacteria" :
-                    this.verifySample(gtiFile, reporter, resultStream);
-                    break;
-                default :
-                    this.countSample(gtiFile, resultStream);
+                case "Archaea", "Bacteria" -> this.verifySample(gtiFile, reporter, resultStream);
+                default -> this.countSample(gtiFile, resultStream);
                 }
             }
             // Write the totals.

@@ -68,7 +68,7 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
     /** list of thresholds to target */
     @Option(name = "--thresholds", aliases = { "--levels" }, metaVar="80,50,40",
             usage = "comma-delimited list of thresholds to target")
-    private void setThresholds(String tList) {
+    protected void setThresholds(String tList) {
         this.thresholds = new FloatList(tList);
     }
 
@@ -85,7 +85,7 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify that all the thresholds are valid.
         for (double thresh : this.thresholds) {
             if (thresh <= 0.0 || thresh >= 100.0)
@@ -93,7 +93,7 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
                         ": must be between 0 and 100.");
         }
         // Read in the records.
-        TabbedLineReader inStream = null;
+        TabbedLineReader inStream;
         if (this.inFile == null) {
             log.info("Records to analyze will be read from standard input.");
             inStream = new TabbedLineReader(System.in);
@@ -108,7 +108,6 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
         } finally {
             inStream.close();
         }
-        return true;
     }
 
     @Override
@@ -123,7 +122,7 @@ public class VerifyAnalyzeProcessor extends BaseProcessor {
             // Sort by this label's values.
             this.records.sort(idx);
             // This will hold the cutoffs.
-            SortedSet<Double> cutoffs = new TreeSet<Double>();
+            SortedSet<Double> cutoffs = new TreeSet<>();
             // Compute the accuracy cutoff.
             double cutoff = this.records.getAccurate();
             cutoffs.add(cutoff);
