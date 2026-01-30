@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.similarity.LevenshteinDetailedDistance;
 import org.apache.commons.text.similarity.LevenshteinResults;
 import org.theseed.counters.CountMap;
@@ -59,7 +59,7 @@ public class MatchVerifyReporter extends MatchReporter {
     public MatchVerifyReporter(OutputStream output) {
         super(output);
         this.computer = new LevenshteinDetailedDistance();
-        this.counters = new EnumCounter<ErrorType>(ErrorType.class);
+        this.counters = new EnumCounter<>(ErrorType.class);
         try {
             this.idFactory = new MD5Hex();
         } catch (NoSuchAlgorithmException e) {
@@ -70,7 +70,7 @@ public class MatchVerifyReporter extends MatchReporter {
     @Override
     public void initialize() throws IOException {
         this.println("sample\tprot_id\trna_id\tlocation\tbest_peg\tdistance\tnotes\tORF");
-        this.pegCounts = new CountMap<String>();
+        this.pegCounts = new CountMap<>();
         clearCounters();
     }
 
@@ -148,13 +148,13 @@ public class MatchVerifyReporter extends MatchReporter {
                         String featCodons = featSeq.substring(1);
                         if (protSeq.length() > featSeq.length()) {
                             int longer = protSeq.length() - featSeq.length();
-                            if (StringUtils.endsWith(protCodons, featCodons)) {
+                            if (Strings.CS.endsWith(protCodons, featCodons)) {
                                 comment = String.format("Found sequence has %d extra codons.", longer);
                                 error = ErrorType.TOO_LONG;
                             }
                         } else {
                             int shorter = featSeq.length() - protSeq.length();
-                            if (StringUtils.endsWith(featCodons, protCodons)) {
+                            if (Strings.CS.endsWith(featCodons, protCodons)) {
                                 comment = String.format("Found sequence has %d fewer codons.", shorter);
                                 error = ErrorType.TOO_SHORT;
                             }
@@ -185,7 +185,7 @@ public class MatchVerifyReporter extends MatchReporter {
         Collection<Feature> found = contigFeatures.inRegion(loc.getLeft(), loc.getRight());
         // For each feature in the region, we need a proteinkmers object so we can compute
         // the distance.
-        Map<String, ProteinKmers> retVal = new HashMap<String, ProteinKmers>(contigFeatures.size());
+        Map<String, ProteinKmers> retVal = new HashMap<>(contigFeatures.size());
         for (Feature feat : found) {
             String protein = feat.getProteinTranslation();
             if (protein != null)

@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -141,7 +141,7 @@ public class MatchVerifyProcessor extends BaseProcessor {
             log.info("{} genomes found in {}.", gFiles.length, this.runDir);
             for (File gFile : gFiles) {
                 // Get the GTI file and the genome.
-                this.sampleId = StringUtils.removeEnd(gFile.getName(), ".gto");
+                this.sampleId = Strings.CS.removeEnd(gFile.getName(), ".gto");
                 File gtiFile = new File(this.runDir, sampleId + ".gti");
                 log.info("Loading genome from {}.", gFile);
                 this.genome = new Genome(gFile);

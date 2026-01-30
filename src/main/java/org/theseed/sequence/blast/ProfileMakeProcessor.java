@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -151,7 +152,7 @@ public class ProfileMakeProcessor extends BaseProcessor {
         else {
             // To create the cluster ID, we take the full identifier and replace the path separator found
             // with a period, a complicated operation.
-            String localId = StringUtils.replace(m.group(1), m.group(2), ".");
+            String localId = Strings.CS.replace(m.group(1), m.group(2), ".");
             // Now read the assigned-count file to determine the quality of this profile.
             try (TabbedLineReader countReader = new TabbedLineReader(new File(profileFile), 2)) {
                 log.debug("Processing profile {}.", localId);

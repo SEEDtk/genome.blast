@@ -7,7 +7,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.theseed.basic.ParseFailureException;
@@ -88,7 +88,7 @@ public class MatchRunProcessor extends MatchBaseProcessor {
         log.info("{} GTO files found in {}.", gtoFiles.length, this.inDir);
         for (File gtoFile : gtoFiles) {
             // Find the corresponding RNA file.
-            String sampleID = StringUtils.removeEnd(gtoFile.getName(), ".gto");
+            String sampleID = Strings.CS.removeEnd(gtoFile.getName(), ".gto");
             File rnaFile = new File(this.inDir, sampleID + ".assembled.fasta");
             File outFile = new File(this.inDir, sampleID + ".gti");
             if (! rnaFile.canRead()) {
