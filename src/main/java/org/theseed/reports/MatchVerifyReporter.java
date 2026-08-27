@@ -168,7 +168,7 @@ public class MatchVerifyReporter extends MatchReporter {
             // Count the peg.
             this.pegCounts.count(fid);
             // Write this sequence.
-            this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s\t%s", this.getSampleId(), this.idFactory.sequenceMD5(prot),
+            this.print("%s\t%s\t%s\t%s\t%s\t%4.4f\t%s\t%s", this.getSampleId(), this.idFactory.proteinMD5(prot),
                     id, loc.toString(), fid, distance, comment, orfLoc);
         }
     }
